@@ -101,7 +101,7 @@ const FEAT = {
   reward_next: "reward this step", ghost_eaten_next: "eating a ghost"
 };
 const fmt = (x, d = 2) => (x === null || x === undefined || Number.isNaN(x)) ? "–" : Number(x).toFixed(d);
-const pct = x => (x === null || x === undefined) ? "–" : `${(100 * x).toFixed(0)}%`;
+const pct = x => (x === null || x === undefined) ? "–" : `${(100 * x).toFixed(1)}%`;
 let D = null;
 const MODELS = ["appo_1111", "appo_2222", "appo_3333"];
 const $ = s => document.querySelector(s);

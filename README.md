@@ -11,7 +11,7 @@ questions. Which exact game fact does it track? What happens when we steer it du
   [2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) and
   [3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333), each trained for 2B steps.
 - **Rebuild.** A plain-PyTorch rebuild of the network and the exact training wrapper chain. It is verified
-  bit-exact against real Sample Factory: max logit difference <!--n:fid_logit-->–<!--/n-->.
+  bit-exact against real Sample Factory: max logit difference <!--n:fid_logit-->1.1e-05<!--/n-->.
 - **Ground truth.** Decoded from the Atari console RAM:
   - ghost positions, using [OCAtari](https://github.com/k4ntz/OC_Atari) and
     [AtariARI](https://github.com/mila-iqia/atari-representation-learning) addresses;
@@ -28,13 +28,13 @@ questions. Which exact game fact does it track? What happens when we steer it du
 **Highlights (agent 1111)**
 - **Negative result for "already clean".**
   - Fraction of alive fc neurons with one main job, on held-out games:
-    - agent <!--n:appo_1111:h1_agent-->–<!--/n-->
-    - random directions <!--n:appo_1111:h1_random_dirs-->–<!--/n-->
-    - untrained network <!--n:appo_1111:h1_untrained-->–<!--/n-->
-  - H1 is <!--n:appo_1111:h1_verdict-->pending<!--/n-->.
+    - agent <!--n:appo_1111:h1_agent-->0.8%<!--/n-->
+    - random directions <!--n:appo_1111:h1_random_dirs-->0.2%<!--/n-->
+    - untrained network <!--n:appo_1111:h1_untrained-->9.4%<!--/n-->
+  - H1 is <!--n:appo_1111:h1_verdict-->supported<!--/n-->.
   - Neurons are explained by *combinations* of game facts. Exploratory: where Ms. Pac-Man is × which way she
-    faces gives a median R² of <!--n:appo_1111:place_heading_median-->–<!--/n--> per neuron, vs
-    <!--n:appo_1111:median_best_disc-->–<!--/n--> for the best single feature.
+    faces gives a median R² of <!--n:appo_1111:place_heading_median-->0.20<!--/n--> per neuron, vs
+    <!--n:appo_1111:median_best_disc-->0.03<!--/n--> for the best single feature.
 - **Steering (confirmatory, held-out games).**
   - fc neuron 453 zero-ablated: ghosts eaten per power pill
     <!--n:appo_1111:fc453_ablate:base-->–<!--/n--> → <!--n:appo_1111:fc453_ablate:arm-->–<!--/n-->
@@ -52,10 +52,21 @@ questions. Which exact game fact does it track? What happens when we steer it du
 
 ### Models
 <!-- BEGIN:models -->
+| agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (no sticky) |
+|---|---|---|---|---|---|---|---|
+| [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 4082 ± 2032 | 6288 ± 1955 |
 <!-- END:models -->
 
 ### Is each neuron "one job"? (H1; held-out games; method vs controls)
 <!-- BEGIN:h1_appo_1111 -->
+| unit set (held-out, confirmatory) | units | one-job fraction [95% CI] | median R²_all | median best single R² |
+|---|---|---|---|---|
+| trained agent (fc units) | 367 | 0.8% [0.8%, 0.8%] | 0.708 | 0.031 |
+| random directions (control a) | 512 | 0.2% [0.2%, 0.6%] | 0.719 | 0.185 |
+| non-negative unit mixtures (control b) | 512 | 1.4% [1.2%, 1.8%] | 0.720 | 0.053 |
+| untrained network (control c) | 499 | 9.4% [5.2%, 11.6%] | 0.537 | 0.096 |
+
+H1 test (agent minus random directions): 0.6% [0.2%, 0.6%]; H1 supported.
 <!-- END:h1_appo_1111 -->
 
 ![one-job fraction](figures/clean_fraction_appo_1111.png)

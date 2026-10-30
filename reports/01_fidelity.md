@@ -21,6 +21,13 @@ pitfalls:
 
 ## Result
 <!-- BEGIN:fidelity -->
+| check | value |
+|---|---|
+| golden trajectory steps (incl. 2 life losses and game over) | 446 |
+| steps with any observation pixel mismatch | 0 |
+| max abs. logit difference | 1.1e-05 |
+| max abs. value difference | 4.8e-07 |
+| reference stack | sample-factory 2.0.3, gym 0.26.2, ale-py 0.8.1, torch 1.13.1 (WSL) |
 <!-- END:fidelity -->
 
 The gate is enforced by `tests/test_fidelity.py`: observations must be bit-exact; logits and values within

@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import matplotlib
+import matplotlib.ticker
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -52,11 +53,12 @@ def clean_fraction_bars(summary: dict, path: Path, title: str) -> None:
     ax.barh(y, vals, color=colors, height=0.55)
     for yi, (lo, hi) in zip(y, errs):
         ax.plot([lo, hi], [yi, yi], color=INK, lw=1)
-    for yi, v in zip(y, vals):
-        ax.text(v + 0.01, yi + 0.3, f"{v:.0%}", va="center", fontsize=8, color=INK2)
+    for yi, v, (lo, hi) in zip(y, vals, errs):
+        ax.text(max(v, hi) + 0.003, yi, f"{100 * v:.1f}%", va="center", fontsize=8, color=INK2)
     ax.set_yticks(y, [lbl for _, lbl in order])
     ax.set_xlabel("fraction of units with one main job (R²_all ≥ 0.3, best single feature ≥ 70% of it)")
-    ax.set_xlim(0, max(1e-3, max(hi for _, hi in errs)) * 1.25)
+    ax.set_xlim(0, max(1e-3, max(hi for _, hi in errs)) * 1.3)
+    ax.xaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0))
     ax.grid(axis="y", visible=False)
     ax.set_title(title, loc="left")
     save(fig, path)

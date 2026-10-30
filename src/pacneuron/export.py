@@ -61,8 +61,19 @@ def export_site(seed: str) -> None:
                                   for c in audit["conv3_channels"]],
                "results": {k: _slim(v) for k, v in extra.items()}}
     (SITE / "data").mkdir(parents=True, exist_ok=True)
-    (SITE / "data" / f"{name}.json").write_text(json.dumps(payload, default=float))
+    (SITE / "data" / f"{name}.json").write_text(json.dumps(_finite(payload), default=float, allow_nan=False))
     log.info(f"export {name}: {len(out_units)} units -> site/data/{name}.json")
+
+
+def _finite(obj):
+    """Recursively replace NaN/inf with None (browsers reject NaN in JSON)."""
+    if isinstance(obj, dict):
+        return {k: _finite(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_finite(v) for v in obj]
+    if isinstance(obj, float) and not np.isfinite(obj):
+        return None
+    return obj
 
 
 def _slim(obj):

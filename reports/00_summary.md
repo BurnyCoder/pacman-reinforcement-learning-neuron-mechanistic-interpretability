@@ -17,6 +17,9 @@ Author: Libor "Burny" Burian. Every number below is regenerated from `results/*.
 
 ## Models
 <!-- BEGIN:models -->
+| agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (no sticky) |
+|---|---|---|---|---|---|---|---|
+| [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 4082 ± 2032 | 6288 ± 1955 |
 <!-- END:models -->
 
 All three are public checkpoints by Edward Beeching on Hugging Face. They were trained with Sample Factory 2.0
@@ -28,7 +31,7 @@ learning was involved.
 |---|---|---|---|
 | 1 | Fidelity gate: our PyTorch/Windows rebuild vs real Sample Factory | passed | [01_fidelity.md](01_fidelity.md) |
 | 2 | RAM ground truth (incl. newly found frightened-mode addresses) | validated | [02_ram_ground_truth.md](02_ram_ground_truth.md) |
-| 3 | Neuron audit, one-job fraction vs controls (H1) | H1 <!--n:appo_1111:h1_verdict-->pending<!--/n--> | [03_neuron_audit.md](03_neuron_audit.md) |
+| 3 | Neuron audit, one-job fraction vs controls (H1) | H1 <!--n:appo_1111:h1_verdict-->supported<!--/n--> | [03_neuron_audit.md](03_neuron_audit.md) |
 | 4 | Steering, frozen candidates vs matched nulls (H2) | H2 <!--n:appo_1111:h2_verdict-->pending<!--/n--> | [04_steering.md](04_steering.md) |
 | 5 | Replication on agents 2222 and 3333 (H3) | see report | [05_replication.md](05_replication.md) |
 
@@ -38,14 +41,14 @@ Preregistration: [preregistration.md](preregistration.md) (before any data) and
 ## Key results (seed 1111)
 
 **H1, one-job fraction on held-out games.**
-- agent: <!--n:appo_1111:h1_agent-->–<!--/n-->
-- random directions: <!--n:appo_1111:h1_random_dirs-->–<!--/n-->
-- non-negative mixtures: <!--n:appo_1111:h1_nonneg_mix-->–<!--/n-->
-- untrained network: <!--n:appo_1111:h1_untrained-->–<!--/n-->
-- difference vs random directions: <!--n:appo_1111:h1_diff-->–<!--/n-->
+- agent: <!--n:appo_1111:h1_agent-->0.8%<!--/n-->
+- random directions: <!--n:appo_1111:h1_random_dirs-->0.2%<!--/n-->
+- non-negative mixtures: <!--n:appo_1111:h1_nonneg_mix-->1.4%<!--/n-->
+- untrained network: <!--n:appo_1111:h1_untrained-->9.4%<!--/n-->
+- difference vs random directions: <!--n:appo_1111:h1_diff-->0.6% [0.2%, 0.6%]<!--/n-->
 
-**Exploratory.** Place × heading explains a median R² of <!--n:appo_1111:place_heading_median-->–<!--/n--> per
-fc unit; <!--n:appo_1111:place_heading_frac-->–<!--/n--> of units exceed 0.3.
+**Exploratory.** Place × heading explains a median R² of <!--n:appo_1111:place_heading_median-->0.20<!--/n--> per
+fc unit; <!--n:appo_1111:place_heading_frac-->30.5%<!--/n--> of units exceed 0.3.
 
 **H2, steering on held-out games (paired by seed):**
 <!-- BEGIN:steer_appo_1111 -->
@@ -54,12 +57,12 @@ fc unit; <!--n:appo_1111:place_heading_frac-->–<!--/n--> of units exceed 0.3.
 ## Deviations from the preregistration
 1. **Stochasticity check.**
    - The preregistered check fired: without sticky actions, same-start games stayed identical for a median of
-     <!--n:appo_1111:div_nosticky-->–<!--/n--> steps.
+     <!--n:appo_1111:div_nosticky-->1230<!--/n--> steps.
    - We therefore applied the preregistered fallback: sticky actions p = 0.25.
-   - With it the median is still <!--n:appo_1111:div_sticky-->–<!--/n--> steps, above the 200 threshold. We
+   - With it the median is still <!--n:appo_1111:div_sticky-->320<!--/n--> steps, above the 200 threshold. We
      proceeded, and added a start-state-cluster bootstrap as a robustness check.
-2. **Sticky actions lower the agent's score**: discovery mean <!--n:appo_1111:score_sticky-->–<!--/n-->, vs
-   <!--n:appo_1111:score_nosticky-->–<!--/n--> without sticky actions.
+2. **Sticky actions lower the agent's score**: discovery mean <!--n:appo_1111:score_sticky-->4082<!--/n-->, vs
+   <!--n:appo_1111:score_nosticky-->6384<!--/n--> without sticky actions.
 
 ## Glossary
 - **Reward-only RL / no imitation learning**: the agent learns from the game score alone, not from human

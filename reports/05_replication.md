@@ -24,6 +24,9 @@ rule*, applied to another agent's own discovery data, find a unit whose steering
 
 ### Agent 2222
 <!-- BEGIN:models -->
+| agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (no sticky) |
+|---|---|---|---|---|---|---|---|
+| [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 4082 ± 2032 | 6288 ± 1955 |
 <!-- END:models -->
 
 One-job audit (discovery, exploratory):

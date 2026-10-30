@@ -34,6 +34,14 @@ whether ghosts are edible, remaining pellets) instead of visual impressions.
 
 ## Validation (all discovery games)
 <!-- BEGIN:ground_truth_appo_1111 -->
+| validation (discovery games, sticky actions) | value |
+|---|---|
+| agent steps checked | 161995 (100 games) |
+| RAM edible bit (bit 7 of ram[1+i]) vs blue sprite pixels, per ghost-step | 97.1% |
+| frightened timer ram[116] > 0 vs any ghost edible | 100.0% |
+| eaten pellets at Ms. Pac-Man's lattice node (26825 events) | 100.0% |
+| steps in control (moving; excludes death, ready and level transitions) | 85.1% |
+| distinct maze layouts seen | 4 |
 <!-- END:ground_truth_appo_1111 -->
 
 Disagreements between the edible bit and blue pixels happen mostly at the end of frightened mode, when ghosts
