@@ -14,8 +14,9 @@ Author: Libor "Burny" Burian. Every number below is regenerated from `results/*.
   and which way she is heading*.
 - **Steering.** A few units do change behaviour when steered. Setting a single unit in the last convolutional
   layer makes the agent avoid one region of the maze, like a phantom "no-go zone". This held up in all three
-  agents, against 63 random units each, on games not used to choose the unit. Turning off a "chase the edible
-  ghost upward" unit stops exactly that behaviour, but does not consistently change how many ghosts get eaten.
+  agents, against 63 random units each, on games not used to choose the unit. Turning off a unit that votes
+  "go up" stops the agent from going up toward edible ghosts, but does not consistently change how many ghosts get
+  eaten.
 
 ## Models
 <!-- BEGIN:models -->

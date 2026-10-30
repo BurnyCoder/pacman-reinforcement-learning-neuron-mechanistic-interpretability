@@ -24,13 +24,16 @@ def _replay_one(args):
     with np.load(path) as z:
         seed, actions = int(z["seed"]), z["action"]
     out = replay(seed, actions, capture=set(steps))
+    if size == "obs":  # the agent's stacked 4x84x84 input instead of the RGB frame
+        return {(seed, t): out[t]["obs"] for t in steps if t in out}
     shrink = (lambda f: f) if size is None else (
         lambda f: np.asarray(Image.fromarray(f[:172]).resize(size, Image.LANCZOS)))  # playfield only, downsampled
     return {(seed, t): shrink(out[t]["rgb"]) for t in steps if t in out}
 
 
-def capture_frames(directory: Path, requests, size: tuple[int, int] | None = None) -> dict[tuple[int, int], np.ndarray]:
-    """requests: iterable of (seed, t). Returns {(seed, t): RGB frame} (full 210x160, or playfield resized to size)."""
+def capture_frames(directory: Path, requests, size: tuple[int, int] | str | None = None) -> dict[tuple[int, int], np.ndarray]:
+    """requests: iterable of (seed, t). Returns {(seed, t): RGB frame} (full 210x160, playfield resized to `size`,
+    or the agent's stacked observation if size == "obs")."""
     by_game: dict[int, set] = {}
     for seed, t in requests:
         by_game.setdefault(int(seed), set()).add(int(t))

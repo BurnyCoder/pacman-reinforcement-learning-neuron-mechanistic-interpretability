@@ -40,13 +40,17 @@ questions. Which exact game fact does it track? What happens when we steer it du
 
 ![no-go zone: baseline (left) vs conv3 channel 18 patched at the outlined cell (right)](figures/video_appo_1111_c3_ch18_cell56.gif)
 
-**A neuron for "chase the edible ghost upward"** (agent 1111).
-- **Mechanism.** Zero-ablating fc neuron 453 cuts "move up when the nearest edible ghost is up" from
+**Removing one fc neuron stops a specific ghost-chasing move** (agent 1111).
+- **Effect.** Zero-ablating fc neuron 453, which votes for UP, cuts "move up when the nearest edible ghost is
+  up" from
   <!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n-->.
 - **Preregistered outcome.** Ghosts eaten per power pill drops only
   <!--n:appo_1111:fc453_ablate:base-->0.294<!--/n--> → <!--n:appo_1111:fc453_ablate:arm-->0.228<!--/n-->. That is
   not significant, so this candidate **fails** H2. It is nonetheless the largest effect among 99 random fc
   ablations.
+- **Caveat on the label.** The unit's "edible ghost is up" label does not survive confound control (stratified
+  AUROC <!--n:appo_1111:fc453_ablate:auroc:dir_edible_up-->0.59<!--/n-->). Its occlusion map peaks on Ms. Pac-Man
+  herself: the effect comes from its UP vote, not from a clean ghost-direction representation.
 
 **"Already clean"? Not for this agent** (negative result).
 - Fraction of alive fc neurons with one main job on held-out games, agent 1111:
@@ -116,10 +120,17 @@ H1 test (agent minus random directions): 0.6% [0.2%, 0.6%]; H1 supported.
 
 Off-target effects (ablation and steering damage):
 <!-- BEGIN:offtarget_appo_1111 -->
-| intervention | Δ return | Δ deaths / 1k steps | Δ pellets / 1k steps | Δ ghosts per pill |
+| intervention | off-target metric | Δ [95% CI] | two-sided p | BH q |
 |---|---|---|---|---|
-| fc neuron 453 zero-ablated | -1619 [-2194, -1056] | 1.14 [0.75, 1.52] | -9.23 [-17.68, -0.84] | -0.07 [-0.19, 0.10] |
-| conv3 channel 18 set to its p99 at cell (5,6) | -2490 [-2990, -2005] | 4.17 [3.27, 5.14] | -12.16 [-20.78, -3.83] | -0.05 [-0.18, 0.09] |
+| fc neuron 453 zero-ablated | return | -1619 [-2194, -1056] | 0.0001 | 0.0001 |
+| fc neuron 453 zero-ablated | deaths_per_1k | 1.14 [0.75, 1.52] | 0.0001 | 0.0001 |
+| fc neuron 453 zero-ablated | pellets_per_1k | -9.23 [-17.68, -0.84] | 0.0416 | 0.0468 |
+| fc neuron 453 zero-ablated | in_control | -469 [-633, -304] | 0.0001 | 0.0001 |
+| conv3 channel 18 set to its p99 at cell (5,6) | return | -2490 [-2990, -2005] | 0.0001 | 0.0001 |
+| conv3 channel 18 set to its p99 at cell (5,6) | deaths_per_1k | 4.17 [3.27, 5.14] | 0.0001 | 0.0001 |
+| conv3 channel 18 set to its p99 at cell (5,6) | pellets_per_1k | -12.16 [-20.78, -3.83] | 0.0071 | 0.0091 |
+| conv3 channel 18 set to its p99 at cell (5,6) | ghosts_per_pill | -0.05 [-0.18, 0.09] | 0.5156 | 0.5156 |
+| conv3 channel 18 set to its p99 at cell (5,6) | in_control | -788 [-944, -633] | 0.0001 | 0.0001 |
 <!-- END:offtarget_appo_1111 -->
 
 ![fc453 vs null](figures/steer_appo_1111_fc453_ablate.png)

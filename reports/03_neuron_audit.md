@@ -52,6 +52,29 @@
 H1 test (agent minus random directions): 0.6% [0.2%, 0.6%]; H1 supported.
 <!-- END:h1_appo_1111 -->
 
+Robustness (preregistered: start-state-cluster bootstrap; threshold sensitivity). The tiny H1 advantage is **not
+robust to the threshold choice**. With the ratio threshold at 0.5 instead of 0.7 (R²_all ≥ 0.3), random directions
+score <!--n:appo_1111:sweep_0.3_0.5:random_dirs-->8.0%<!--/n--> vs the agent's
+<!--n:appo_1111:sweep_0.3_0.5:agent-->1.4%<!--/n-->:
+<!-- BEGIN:h1robust_appo_1111 -->
+| unit set | one-job fraction | game-bootstrap 95% CI | start-state-cluster 95% CI |
+|---|---|---|---|
+| trained agent (fc units) | 0.8% | [0.8%, 0.8%] | [0.8%, 0.8%] |
+| random directions (control a) | 0.2% | [0.2%, 0.6%] | [0.2%, 0.4%] |
+| non-negative unit mixtures (control b) | 1.4% | [1.2%, 1.8%] | [1.4%, 2.0%] |
+| untrained network (control c) | 9.4% | [5.2%, 11.6%] | [4.8%, 11.0%] |
+
+Threshold sweep, one-job fraction shown as agent / random directions (rows: R²_all threshold; columns: best-single / R²_all ratio threshold). Start-state clusters: 4.
+
+| R²_all ≥ | ratio ≥ 0.5 | 0.6 | 0.7 | 0.8 | 0.9 |
+|---|---|---|---|---|---|
+| 0.1 | 1.6% / 8.0% | 0.8% / 1.6% | 0.8% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% |
+| 0.2 | 1.6% / 8.0% | 0.8% / 1.6% | 0.8% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% |
+| 0.3 | 1.4% / 8.0% | 0.8% / 1.6% | 0.8% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% |
+| 0.4 | 1.1% / 8.0% | 0.8% / 1.6% | 0.8% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% |
+| 0.5 | 1.1% / 8.0% | 0.8% / 1.6% | 0.8% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% |
+<!-- END:h1robust_appo_1111 -->
+
 ![one-job fraction, held-out](../figures/clean_fraction_appo_1111.png)
 ![per-unit R²](../figures/r2_scatter_appo_1111.png)
 

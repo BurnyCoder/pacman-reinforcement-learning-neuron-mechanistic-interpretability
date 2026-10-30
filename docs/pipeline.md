@@ -21,6 +21,12 @@ uv run python -m pacneuron.pipeline --phase <phase>[,<phase>...] --seed {1111|22
 | `collect-heldout` | frozen files (lock) | `DATA_DIR/rollouts/<agent>/heldout/*` | refuses to run unless the preregistration lock holds |
 | `h1` | discovery + held-out | `results/h1_<agent>.json` | confirmatory H1 |
 | `confirm` | frozen candidates, held-out baseline | `DATA_DIR/steer/<agent>/heldout/*`, `results/confirm_<agent>.json` | confirmatory H2/H3 incl. null arms |
+| `offtarget` | confirm arms | `results/offtarget_<agent>.json` | §6 criterion 3: two-sided tests + BH |
+| `attribution` | discovery games, candidates | `results/attribution_<agent>.json` | upstream contributions, occlusion, stratified AUROC, unique R² |
+| `occupancy` | confirm arms | `results/occupancy_<agent>.json` | where the agent goes with/without conv3 patches |
+| `dose-screen` | discovery games, audit | `results/dose_screen_<agent>.json` | exploratory dose-response of the patch screen |
+| `maze-frame` | discovery game 0 | `figures/maze_frame.npy` | background frame for maze figures |
+| `publish-hf` | results, site data, analysis arrays | HF dataset + collection, `results/hf_publish.json` | needs a HF token (`HF_TOKEN_PATH`) |
 | `videos` | confirm arms | `figures/video_<agent>_*.mp4/.gif`, `site/media/` | side-by-side replays |
 | `report` | `results/*.json` | tables, inline numbers and figures in README, reports, paper | the only source of numbers |
 | `site` | audit + other results | `site/data/<agent>.json`, `site/img/<agent>/*.webp` | microscope export |

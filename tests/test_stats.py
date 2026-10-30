@@ -28,3 +28,11 @@ def test_bootstrap_ci_coverage():
         _, lo, hi = mean_ci(x, n_boot=2000, seed=s)
         hits += lo <= 1.0 <= hi
     assert 0.88 < hits / 200 < 0.99
+
+
+def test_two_sided_signflip():
+    from pacneuron.stats import paired_signflip_p_two_sided
+    rng = np.random.default_rng(3)
+    assert paired_signflip_p_two_sided(rng.normal(-0.6, 1, 60)) < 0.01  # detects either direction
+    ps = [paired_signflip_p_two_sided(rng.normal(0, 1, 40), n_perm=999, seed=s) for s in range(200)]
+    assert 0.01 < np.mean(np.array(ps) < 0.05) < 0.12

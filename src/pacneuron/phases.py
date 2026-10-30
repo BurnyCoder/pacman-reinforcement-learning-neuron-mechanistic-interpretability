@@ -604,3 +604,84 @@ def dose_screen(seed: str) -> None:
         out[label] = {"strongest_repel": float(att.ravel()[i]), "channel": i // 49, "cell": [i % 49 // 7, i % 7],
                       "strongest_attract": float(att.max()), "mean_abs": float(np.abs(att).mean())}
     write_result(f"dose_screen_{name}", {"exploratory": True, "doses": out})
+
+
+def offtarget(seed: str) -> None:
+    """Preregistration §6 criterion 3: off-target metrics of each frozen candidate, two-sided paired sign-flip tests,
+    Benjamini-Hochberg-corrected across all off-target tests of this agent."""
+    import json
+
+    from pacneuron import steer
+    from pacneuron.config import RESULTS_DIR
+    from pacneuron.stats import bh, mean_ci, paired_signflip_p_two_sided
+    name = MODELS[seed].name
+    derived = RESULTS_DIR / f"candidates_{name}.json"
+    frozen = json.loads((derived if derived.exists() else RESULTS_DIR / "candidates.json").read_text())
+    base = steer.arm_metrics(data.split_dir(name, "heldout"))
+    rows = []
+    for c in [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]:
+        arm = steer.arm_metrics(DATA_DIR / "steer" / name / "heldout" / c["name"])
+        for mt in ("return", "deaths_per_1k", "pellets_per_1k", "ghosts_per_pill", "in_control"):
+            if mt == c["metric"]:
+                continue
+            seeds = [s for s in arm if np.isfinite(arm[s].get(mt, np.nan)) and np.isfinite(base[s].get(mt, np.nan))]
+            d = np.array([arm[s][mt] - base[s][mt] for s in seeds])
+            m, lo, hi = mean_ci(d)
+            rows.append({"candidate": c["name"], "label": c.get("label", c["name"]), "metric": mt, "n": len(d),
+                         "delta": m, "ci": [lo, hi], "p_two_sided": paired_signflip_p_two_sided(d)})
+    for r, q in zip(rows, bh([r["p_two_sided"] for r in rows])):
+        r["q_bh"] = float(q)
+    write_result(f"offtarget_{name}", {"tests": rows, "correction": "Benjamini-Hochberg over all rows"})
+
+
+def attribution(seed: str, n_top: int = 200, n_occ: int = 50) -> None:
+    """Upstream exact contributions, occlusion maps and confound-controlled label checks for each steering candidate."""
+    import json
+
+    from pacneuron import attribution as AT
+    from pacneuron.config import RESULTS_DIR
+    from pacneuron.render import capture_frames
+    name = MODELS[seed].name
+    derived = RESULTS_DIR / f"candidates_{name}.json"
+    frozen = json.loads((derived if derived.exists() else RESULTS_DIR / "candidates.json").read_text())
+    cands = [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]
+    d = data.split_dir(name, "discovery")
+    S = data.load_split(d, acts=("conv3", "fc_pre"))
+    model = _model(seed)
+    F = S["features"]
+    region = (np.digitize(F["player_x"], [53, 106]) * 3 + np.digitize(F["player_y"], [58, 116])).astype(int)
+    strata = region * 2 + F["frightened"].astype(int)  # frightened x 3x3 player region
+    audit_res = json.loads((RESULTS_DIR / f"audit_{name}.json").read_text())
+    out = {}
+    for c in cands:
+        spec = c["spec"]
+        if spec["site"] == "fc":
+            n = spec["units"][0]
+            act = np.maximum(S["fc_pre"][:, n].astype(np.float32), 0)
+            read = lambda o, n=n: o["fc"][:, n]
+        else:
+            ch, (i, j) = spec["units"][0], spec["cell"]
+            act = S["conv3"][:, ch, i, j].astype(np.float32)
+            read = lambda o, ch=ch, i=i, j=j: o["conv3"][:, ch, i, j]
+        top = np.argsort(-act)[:n_top]
+        keys = [(int(S["seeds"][S["game"][k]]), int(S["t"][k])) for k in top[:n_occ]]
+        obs_map = capture_frames(d, keys, size="obs")
+        obs = np.stack([obs_map[k] for k in keys if k in obs_map])
+        rgb = capture_frames(d, keys[:1])[keys[0]]
+        res = {"label": c.get("label", c["name"]), "site": spec["site"], "frac_active": float((act > 0).mean()),
+               "top_state": list(keys[0]), "occlusion": AT.occlusion(model, obs, read).tolist()}
+        np.save(DATA_DIR / "analysis" / f"topframe_{name}_{c['name']}.npy", rgb)
+        if spec["site"] == "fc":
+            res["upstream_conv3"] = AT.fc_upstream(model, S["conv3"][top], n)
+            u = next(x for x in audit_res["fc_units"] if x["unit"] == n)
+            trig = c.get("secondary_metric", {}).get("metric_kwargs", {}).get("trigger")
+            feats = [f for f in dict.fromkeys([trig, u.get("best"), u.get("second")]) if f]
+            res["label_checks"] = {f: {"r2_single": u["r2_by_feature"][f],
+                                       "stratified_auroc": AT.stratified_auroc(act, F[f], strata)
+                                       if len(np.unique(F[f])) == 2 else None} for f in feats}
+            res["unique_r2"] = AT.unique_r2(act, F, S["game"], feats)
+        else:
+            res["upstream_conv2"] = AT.conv3_upstream(model, obs, ch, (i, j))
+        out[c["name"]] = res
+        log.info(f"attribution {name}/{c['name']}: done")
+    write_result(f"attribution_{name}", {"candidates": out, "occlusion_patch": AT.PATCH, "occlusion_stride": AT.STRIDE})

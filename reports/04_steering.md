@@ -60,12 +60,20 @@ state. Setting a single conv3 unit is an exact rank-1 update of the fc pre-activ
 | fc neuron 188 clamped to its p99 (constant logit bias, DLA UP -0.70) (positive control) | action_given_trigger (−) | 0.395 → 0.305 | -0.090 [-0.102, -0.079] | – | – | – |
 <!-- END:steer_appo_1111 -->
 
-Off-target effects, i.e. how much else changes (paired Δ [95% CI]):
+Off-target effects, i.e. how much else changes (preregistration §6 criterion 3: paired Δ [95% CI], two-sided
+sign-flip test, Benjamini-Hochberg across all off-target tests of the agent):
 <!-- BEGIN:offtarget_appo_1111 -->
-| intervention | Δ return | Δ deaths / 1k steps | Δ pellets / 1k steps | Δ ghosts per pill |
+| intervention | off-target metric | Δ [95% CI] | two-sided p | BH q |
 |---|---|---|---|---|
-| fc neuron 453 zero-ablated | -1619 [-2194, -1056] | 1.14 [0.75, 1.52] | -9.23 [-17.68, -0.84] | -0.07 [-0.19, 0.10] |
-| conv3 channel 18 set to its p99 at cell (5,6) | -2490 [-2990, -2005] | 4.17 [3.27, 5.14] | -12.16 [-20.78, -3.83] | -0.05 [-0.18, 0.09] |
+| fc neuron 453 zero-ablated | return | -1619 [-2194, -1056] | 0.0001 | 0.0001 |
+| fc neuron 453 zero-ablated | deaths_per_1k | 1.14 [0.75, 1.52] | 0.0001 | 0.0001 |
+| fc neuron 453 zero-ablated | pellets_per_1k | -9.23 [-17.68, -0.84] | 0.0416 | 0.0468 |
+| fc neuron 453 zero-ablated | in_control | -469 [-633, -304] | 0.0001 | 0.0001 |
+| conv3 channel 18 set to its p99 at cell (5,6) | return | -2490 [-2990, -2005] | 0.0001 | 0.0001 |
+| conv3 channel 18 set to its p99 at cell (5,6) | deaths_per_1k | 4.17 [3.27, 5.14] | 0.0001 | 0.0001 |
+| conv3 channel 18 set to its p99 at cell (5,6) | pellets_per_1k | -12.16 [-20.78, -3.83] | 0.0071 | 0.0091 |
+| conv3 channel 18 set to its p99 at cell (5,6) | ghosts_per_pill | -0.05 [-0.18, 0.09] | 0.5156 | 0.5156 |
+| conv3 channel 18 set to its p99 at cell (5,6) | in_control | -788 [-944, -633] | 0.0001 | 0.0001 |
 <!-- END:offtarget_appo_1111 -->
 
 Secondary mechanistic metric for fc 453: P(UP-ish action | nearest edible ghost is up)
@@ -105,10 +113,11 @@ Videos (left: unsteered, right: steered, same game seed and sticky-action RNG):
   ([Mini, Turner et al. 2023](https://arxiv.org/abs/2310.08043)), here with a repelling sign and in an Atari agent
   trained by APPO.
 
-### fc neuron 453 ablation: a mechanistic effect that does not carry to the preregistered outcome (H2 fails)
-- **The mechanism replicates.** Ablating fc 453 sharply reduces moving up when the nearest edible ghost is up:
-  <!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n--> (secondary metric, not in the Holm family). The audit predicted
-  this: the unit tracks "edible ghost is up" and votes UP.
+### fc neuron 453 ablation: a predicted local effect that does not carry to the preregistered outcome (H2 fails)
+- **The predicted local effect holds.** Ablating fc 453 sharply reduces moving up when the nearest edible ghost
+  is up: <!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n--> (secondary metric, not in the Holm family). The audit
+  predicted this from the unit's UP vote and its correlation with "edible ghost is up". The attribution below
+  shows that the correlation itself is weak after confound control.
 - **The primary outcome does not.** Ghosts eaten per power pill fall only from
   <!--n:appo_1111:fc453_ablate:base-->0.294<!--/n--> to <!--n:appo_1111:fc453_ablate:arm-->0.228<!--/n-->
   (Δ <!--n:appo_1111:fc453_ablate:delta-->-0.066 [-0.192, 0.101]<!--/n-->, Holm p <!--n:appo_1111:fc453_ablate:p-->0.2280<!--/n-->).
@@ -120,6 +129,37 @@ Videos (left: unsteered, right: steered, same game seed and sticky-action RNG):
 - **Winner's curse.** The discovery pilot showed a much larger drop:
   <!--n:appo_1111:pilot:fc453_ablate:ghosts_per_pill-->0.392 → 0.140 (Δ -0.252 [-0.331, -0.171])<!--/n-->. Selecting a candidate on its discovery effect
   inflates that estimate, which is exactly why confirmatory effect sizes come only from held-out games.
+
+### Attribution of the candidate units (discovery data; exact or model-based)
+- **conv3 units.** Upstream contributions come from conv2 and are exact for the linear pre-activation.
+- **fc units.** Upstream contributions come from conv3, and the units also get label checks that control for
+  confounds:
+  - stratified AUROC within frightened × 3×3 player-region strata;
+  - unique R² (the drop in the gradient-boosting ceiling when the feature is removed).
+- **Occlusion.** The occlusion peak is the screen location whose 12×12-observation-pixel patch, replaced by the
+  mean frame, lowers the unit most.
+
+<!-- BEGIN:attribution_appo_1111 -->
+| unit | strongest upstream units (mean exact contribution) | occlusion peak (screen x, y) | label checks: single-feature R² / stratified AUROC / unique R² |
+|---|---|---|---|
+| fc neuron 453 zero-ablated | conv3 ch 17 (+5.1), conv3 ch 59 (+4.4), conv3 ch 1 (+4.3) | (57, 90) | dir_edible_up: 0.14 / 0.59 / 0.003; n_pellets: 0.38 / – / 0.007; n_edible: 0.29 / – / 0.002 |
+| conv3 channel 18 set to its p99 at cell (5,6) | conv2 ch 40 (+6.9), conv2 ch 12 (+5.5), conv2 ch 56 (+5.1) | (137, 165) | – |
+<!-- END:attribution_appo_1111 -->
+
+![occlusion: conv3 channel 18 at (5,6)](../figures/occlusion_appo_1111_c3_ch18_cell56.png)
+![occlusion: fc 453](../figures/occlusion_appo_1111_fc453_ablate.png)
+
+What this changes:
+- **conv3 channel 18 at (5,6)** depends on input inside its own receptive field (lower right of the maze). So the
+  no-go zone is spatially local: the unit "reports" something about that part of the screen.
+- **fc 453.** Its "nearest edible ghost is up" label does not survive confound control:
+  - stratified AUROC <!--n:appo_1111:fc453_ablate:auroc:dir_edible_up-->0.59<!--/n-->;
+  - unique R² <!--n:appo_1111:fc453_ablate:uniq:dir_edible_up-->0.003<!--/n-->.
+
+  Its causal effect on "move up when the edible ghost is up" therefore comes from its fixed UP vote (direct logit
+  attribution), applied in the states where it fires (mostly frightened mode early in a level). It does not come
+  from a clean "ghost is up" representation. "Chase the edible ghost upward" describes the effect of removing it,
+  not what it encodes.
 
 ### Caveats
 - Steering this agent damages overall play for most interventions; even the positive control hurts. The matched
