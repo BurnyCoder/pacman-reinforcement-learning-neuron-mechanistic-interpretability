@@ -27,11 +27,13 @@ rule*, applied to another agent's own discovery data, find a unit whose steering
 | rule (frozen on agent 1111) | agent | selected unit | primary metric Δ [95% CI] | Holm p (within agent) | null units at least as strong | passes |
 |---|---|---|---|---|---|---|
 | zero-ablate the fc unit most needed for approaching edible ghosts | appo_2222 | fc neuron 379 zero-ablated | -0.101 [-0.167, -0.036] | 0.0025 | 0 of 99 | yes |
+| zero-ablate the fc unit most needed for approaching edible ghosts | appo_3333 | fc neuron 351 zero-ablated | 0.190 [0.071, 0.301] | 0.9992 | 99 of 99 | no |
 | set the most repelling conv3 (channel, cell) to its p99 | appo_2222 | conv3 channel 3 set to its p99 at cell (0, 0) | -0.034 [-0.043, -0.026] | 0.0002 | 0 of 63 | yes |
+| set the most repelling conv3 (channel, cell) to its p99 | appo_3333 | conv3 channel 46 set to its p99 at cell (5, 6) | -0.216 [-0.232, -0.200] | 0.0002 | 0 of 63 | yes |
 <!-- END:h3 -->
 
-- "No-go zone" rule: <!--n:h3:c3_ch18_cell56-->–<!--/n-->.
-- Ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->–<!--/n-->.
+- "No-go zone" rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n-->.
+- Ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n-->.
 
 ### Agent 2222
 <!-- BEGIN:models -->
@@ -97,8 +99,34 @@ H1 test (agent minus random directions): 0.0% [0.0%, 0.0%]; H1 not supported.
 
 Steering (held-out, confirmatory):
 <!-- BEGIN:steer_appo_3333 -->
+| intervention | primary metric (predicted sign) | baseline → steered | Δ [95% CI] | Holm p | above null 95th pct? | H2 |
+|---|---|---|---|---|---|---|
+| fc neuron 351 zero-ablated | ghosts_per_pill (−) | 0.660 → 0.850 | 0.190 [0.071, 0.301] | 0.9992 | no (null q95 0.019) | fail |
+| conv3 channel 46 set to its p99 at cell (5, 6) | approach (−) | 0.440 → 0.224 | -0.216 [-0.232, -0.200] | 0.0002 | yes (null q95 0.012) | pass |
 <!-- END:steer_appo_3333 -->
 
 ## Interpretation
-Filled in after the runs. A rule that replicates across seeds shows that the *function* (e.g. a single fc unit
-gating ghost hunting) is a reliable product of training, not an accident of one network.
+
+### No-go-zone rule: replicates in both new agents (3 of 3 agents in total)
+- **What the rule picks.** "Set the most repelling conv3 (channel, cell) of the open-loop screen to its p99"
+  finds, in every agent, a single unit whose activity repels the agent from the corresponding maze region:
+  - agent 2222: channel 3 at the top-left cell;
+  - agent 3333: channel 46 at the same lower-right cell as agent 1111's channel 18.
+- **Effect sizes.** They vary several-fold between agents; agent 3333's is the largest (see the table). In each
+  agent the unit is stronger than all 63 other channels at the same position.
+- **Side effects.** The repelled agent abandons part of the maze and dies more. This is a reliable, reproducible
+  product of training, not an accident of one network.
+- **What it does not tell us.** *Which* channel and cell does this differs between networks; no unit
+  correspondence is implied.
+
+### Ghost-hunting ablation rule: does not replicate
+- **Agent 2222.** The rule-selected fc unit (379) passes: ablating it lowers ghosts eaten per power pill, beyond
+  all 99 null units.
+- **Agent 3333.** The rule-selected unit (351) moves the primary metric in the **opposite** direction: ghosts eaten
+  per pill rise. Its predicted local effect is still there: P(move down | nearest edible ghost is down) drops
+  sharply (`results/confirm_appo_3333.json`, secondary metric).
+- **Agent 1111.** The original candidate (453) showed the same local effect, with a non-significant primary
+  outcome.
+- **Conclusion.** The fc "chase the edible ghost in direction d" units are real and causally specific. Their
+  effect on the *outcome* (ghosts eaten) is not consistent: removing one direction's vote changes the route and
+  can even increase ghost eating.

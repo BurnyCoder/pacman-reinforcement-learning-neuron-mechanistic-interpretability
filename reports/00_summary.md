@@ -12,8 +12,10 @@ Author: Libor "Burny" Burian. Every number below is regenerated from `results/*.
   does the agent behave differently in the predicted way?
 - **Labels.** Most neurons do not track one game fact. They respond to combinations: mostly *where Ms. Pac-Man is
   and which way she is heading*.
-- **Steering.** A few units do change behaviour when steered. The confirmatory, held-out results are in the table
-  below.
+- **Steering.** A few units do change behaviour when steered. Setting a single unit in the last convolutional
+  layer makes the agent avoid one region of the maze, like a phantom "no-go zone". This held up in all three
+  agents, against 63 random units each, on games not used to choose the unit. Turning off a "chase the edible
+  ghost upward" unit stops exactly that behaviour, but does not consistently change how many ghosts get eaten.
 
 ## Models
 <!-- BEGIN:models -->
@@ -60,6 +62,12 @@ fc unit; <!--n:appo_1111:place_heading_frac-->30.5%<!--/n--> of units exceed 0.3
 | conv3 channel 18 set to its p99 at cell (5,6) | approach (−) | 0.424 → 0.361 | -0.063 [-0.077, -0.050] | 0.0002 | yes (null q95 0.013) | pass |
 | fc neuron 188 clamped to its p99 (constant logit bias, DLA UP -0.70) (positive control) | action_given_trigger (−) | 0.395 → 0.305 | -0.090 [-0.102, -0.079] | – | – | – |
 <!-- END:steer_appo_1111 -->
+
+**H3, replication on agents 2222 and 3333** (frozen selection rules):
+- no-go-zone rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n-->;
+- ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n-->.
+
+Details are in [05_replication.md](05_replication.md).
 
 ## Deviations from the preregistration
 1. **Stochasticity check.**

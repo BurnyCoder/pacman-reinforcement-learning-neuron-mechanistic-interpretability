@@ -74,7 +74,7 @@ def r2_scatter(sets: dict[str, tuple[np.ndarray, np.ndarray]], path: Path, title
     xs = np.linspace(0.3, 1, 10)
     ax.plot(xs, 0.7 * xs, color=INK2, lw=1)
     ax.axvline(0.3, color=INK2, lw=1)
-    ax.text(0.62, 0.33, "clean region:\nabove line, right of 0.3", fontsize=7.5, color=INK2)
+    ax.text(0.33, 0.62, "one-job region:\nabove the line and\nright of R²_all = 0.3", fontsize=7.5, color=INK2)
     ax.set_xlabel("R²_all  (all 40 features, gradient boosting)")
     ax.set_ylabel("best single-feature R²")
     ax.set_xlim(-0.05, 1)

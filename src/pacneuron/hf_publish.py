@@ -56,11 +56,12 @@ def publish() -> str:
                 shutil.copy(f, root / sub / f.name)
         api.upload_folder(folder_path=str(root), repo_id=DATASET, repo_type="dataset",
                           commit_message="Update neuron atlas from pacneuron pipeline")
-    col = api.create_collection(COLLECTION, description=f"Neuron-level interpretability and steering of reward-trained "
-                                f"Ms. Pac-Man agents. Code: {GITHUB}", exists_ok=True)
+    # collection descriptions are limited in length; the GitHub link goes into the dataset item's note instead
+    col = api.create_collection(COLLECTION, description="Neuron-level interpretability and steering of "
+                                "reward-trained (no imitation) Ms. Pac-Man RL agents.", exists_ok=True)
     for m in MODELS.values():
         api.add_collection_item(col.slug, m.repo_id, "model", note="Pretrained APPO agent analysed in the study",
                                 exists_ok=True)
-    api.add_collection_item(col.slug, DATASET, "dataset", note="Derived results, unit atlas and analysis arrays",
-                            exists_ok=True)
+    api.add_collection_item(col.slug, DATASET, "dataset", note=f"Derived results, unit atlas and analysis arrays. "
+                            f"Code, paper and preregistration: {GITHUB}", exists_ok=True)
     return f"https://huggingface.co/collections/{col.slug}"

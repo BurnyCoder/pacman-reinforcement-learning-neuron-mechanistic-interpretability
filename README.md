@@ -61,11 +61,22 @@ questions. Which exact game fact does it track? What happens when we steer it du
   <!--n:appo_1111:median_best_disc-->0.03<!--/n--> for the best single feature. They behave like
   place × heading cells.
 
-**Replication.** The frozen selection rules applied to agents 2222 and 3333 are in
-[reports/05_replication.md](reports/05_replication.md).
+**Replication (H3).** Frozen selection rules were applied to independently trained agents 2222 and 3333:
+- no-go-zone rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n-->;
+- ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n-->.
+
+See [reports/05_replication.md](reports/05_replication.md).
+
+![agent 3333: no-go zone from conv3 channel 46](figures/video_appo_3333_c3_ch46_cell56.gif)
 
 **Interactive microscope.** Every neuron with its frames, label and action votes:
 https://burnycoder.github.io/pacman-reinforcement-learning-neuron-mechanistic-interpretability/
+
+**Paper:** [paper/paper.pdf](paper/paper.pdf).
+
+**Hugging Face:**
+- collection: <!--n:hf_collection-->https://huggingface.co/collections/BurnyCoder/ms-pac-man-rl-neuron-interpretability-6ae446b6c52e7e6af4d1bd8d<!--/n-->
+- dataset with all results and unit atlases: <!--n:hf_dataset-->https://huggingface.co/datasets/BurnyCoder/mspacman-appo-neuron-atlas<!--/n-->
 
 ![where the agent goes with and without the patch](figures/occupancy_appo_1111_c3_ch18_cell56.png)
 

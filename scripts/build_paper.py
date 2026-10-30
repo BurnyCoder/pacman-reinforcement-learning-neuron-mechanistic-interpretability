@@ -21,7 +21,7 @@ def main() -> None:
     font = "Cambria" if platform.system() == "Windows" else "DejaVu Serif"
     cmd = [pandoc, "paper.md", "-o", "paper.pdf", "--pdf-engine=xelatex", "--resource-path=.:..",
            "-V", f"mainfont={font}", "-V", "geometry:margin=2.2cm", "-V", "fontsize=10pt", "-V", "colorlinks=true",
-           "-V", "linkcolor=blue", "-V", "urlcolor=blue", "--number-sections"]
+           "-V", "linkcolor=blue", "-V", "urlcolor=blue"]  # headings carry their own numbers
     subprocess.run(cmd, cwd=PAPER, check=True)
     print(f"wrote {PAPER / 'paper.pdf'}")
 

@@ -34,8 +34,9 @@ Ablating fc neuron 453, a "chase the edible ghost upward" unit, cuts that specif
 significantly reduce ghosts eaten per power pill (H2 fails for this candidate).
 
 **Replication.** Frozen selection rules applied to the other two agents give the following (H3):
-- no-go-zone rule: <!--n:h3:c3_ch18_cell56-->–<!--/n-->;
-- ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->–<!--/n-->.
+
+- no-go-zone rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n-->;
+- ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n-->.
 
 All tests, deviations and negative results are reported.
 
@@ -49,10 +50,12 @@ one main job", based on top-activating examples, feature visualisation and steer
 [(Cammarata/Goodfire 2026)](https://already-clean.goodfire.com/).
 
 **Why RL is a sharp test.** Reinforcement-learning agents trained from reward alone offer two advantages:
+
 - the environment state is fully known (for Atari, the console RAM);
 - behaviour can be measured causally in closed loop.
 
 **Gap in prior work.** Prior interpretability work on Ms. Pac-Man used:
+
 - input saliency [(Greydanus et al. 2018)](https://arxiv.org/abs/1711.00138);
 - attention maps [(Mott et al. 2019)](https://arxiv.org/abs/1906.02500);
 - NMF concepts [(Bekkemoen & Langseth 2025)](https://mlanthology.org/mlj/2025/bekkemoen2025mlj-interpretable);
@@ -65,6 +68,7 @@ Single-channel steering of RL agents has been shown for a Procgen maze agent
 To our knowledge, no published work has steered individual neurons of a reward-trained Ms. Pac-Man agent.
 
 **Contributions.**
+
 1. A bit-exact, dependency-light re-implementation of the public Sample Factory Ms. Pac-Man agents with a golden
    fidelity test.
 2. RAM ground truth for Ms. Pac-Man, including the frightened-mode timer `ram[116]` and per-ghost edible bits
@@ -92,6 +96,7 @@ To our knowledge, no published work has steered individual neurons of a reward-t
 # 3. Method
 
 ## 3.1 Agents and fidelity
+
 - **Agents.** `edbeeching/atari_2B_atari_mspacman_{1111,2222,3333}`:
   - Sample Factory 2.0 APPO, 2B env steps, clipped reward, γ = 0.99, no RNN;
   - Nature-CNN torso (conv 32/64/64) → fc 512 ReLU → linear policy (9 actions) and value heads.
@@ -105,6 +110,7 @@ To our knowledge, no published work has steered individual neurons of a reward-t
   Appendix A has the details.
 
 ## 3.2 Ground truth
+
 - **RAM decoding** follows OCAtari and AtariARI.
 - **Frightened mode** was identified by correlating RAM bytes with blue ghost pixels and power-pill events.
 - **Maze.** A 14×18 lattice graph built from the frame gives breadth-first-search distances and directions.
@@ -112,6 +118,7 @@ To our knowledge, no published work has steered individual neurons of a reward-t
   ready screen, level transition) are excluded.
 
 ## 3.3 Data and stochasticity
+
 - **Splits.** 100 discovery games (seeds 0–99) and 100 held-out games (seeds 10000–10099) per agent.
 - **Action sampling.** Actions are sampled from the policy with a per-game RNG, so steered and baseline games share
   random numbers.
@@ -121,6 +128,7 @@ To our knowledge, no published work has steered individual neurons of a reward-t
   <!--n:appo_1111:div_sticky-->320<!--/n--> steps).
 
 ## 3.4 Audit (H1)
+
 - **Per-unit score.** For each alive fc unit (positive pole = post-ReLU activation):
   - R²₁, the out-of-sample R² of 20-bin means of each single feature;
   - R²_all, the out-of-sample R² of gradient boosting on all features.
@@ -133,6 +141,7 @@ To our knowledge, no published work has steered individual neurons of a reward-t
   (a) excludes 0.
 
 ## 3.5 Steering (H2) and replication (H3)
+
 - **Why intervene upstream of fc.** Because the heads are linear and there is no recurrence:
   - clamping an fc unit only adds a constant action bias;
   - ablating it removes a state-dependent vote;
@@ -222,6 +231,8 @@ Off-target effects:
 
 ![](../figures/steer_appo_1111_c3_ch18_cell56.png)
 
+![](../figures/occupancy_appo_1111_c3_ch18_cell56.png)
+
 Discovery-phase evidence that led to the candidates (exploratory):
 
 <!-- BEGIN:screen_appo_1111 -->
@@ -254,6 +265,17 @@ Discovery-phase evidence that led to the candidates (exploratory):
 <!-- END:pilot_appo_1111 -->
 
 ## 4.4 H3: replication
+<!-- BEGIN:h3 -->
+| rule (frozen on agent 1111) | agent | selected unit | primary metric Δ [95% CI] | Holm p (within agent) | null units at least as strong | passes |
+|---|---|---|---|---|---|---|
+| zero-ablate the fc unit most needed for approaching edible ghosts | appo_2222 | fc neuron 379 zero-ablated | -0.101 [-0.167, -0.036] | 0.0025 | 0 of 99 | yes |
+| zero-ablate the fc unit most needed for approaching edible ghosts | appo_3333 | fc neuron 351 zero-ablated | 0.190 [0.071, 0.301] | 0.9992 | 99 of 99 | no |
+| set the most repelling conv3 (channel, cell) to its p99 | appo_2222 | conv3 channel 3 set to its p99 at cell (0, 0) | -0.034 [-0.043, -0.026] | 0.0002 | 0 of 63 | yes |
+| set the most repelling conv3 (channel, cell) to its p99 | appo_3333 | conv3 channel 46 set to its p99 at cell (5, 6) | -0.216 [-0.232, -0.200] | 0.0002 | 0 of 63 | yes |
+<!-- END:h3 -->
+
+Steering per agent (held-out):
+
 <!-- BEGIN:steer_appo_2222 -->
 | intervention | primary metric (predicted sign) | baseline → steered | Δ [95% CI] | Holm p | above null 95th pct? | H2 |
 |---|---|---|---|---|---|---|
@@ -262,11 +284,16 @@ Discovery-phase evidence that led to the candidates (exploratory):
 <!-- END:steer_appo_2222 -->
 
 <!-- BEGIN:steer_appo_3333 -->
+| intervention | primary metric (predicted sign) | baseline → steered | Δ [95% CI] | Holm p | above null 95th pct? | H2 |
+|---|---|---|---|---|---|---|
+| fc neuron 351 zero-ablated | ghosts_per_pill (−) | 0.660 → 0.850 | 0.190 [0.071, 0.301] | 0.9992 | no (null q95 0.019) | fail |
+| conv3 channel 46 set to its p99 at cell (5, 6) | approach (−) | 0.440 → 0.224 | -0.216 [-0.232, -0.200] | 0.0002 | yes (null q95 0.012) | pass |
 <!-- END:steer_appo_3333 -->
 
 # 5. Discussion
 
 **Are the neurons clean?**
+
 - **Not under single-feature labels.** With a 40-feature dictionary of single game variables, almost no fc neuron
   of these agents has one main job, and the agents are no cleaner than random directions in a meaningful way.
 - **The basis is still not arbitrary.**
@@ -282,18 +309,21 @@ Discovery-phase evidence that led to the candidates (exploratory):
   hoc and should be tested with a preregistered conjunctive dictionary.
 
 **Can single units steer behaviour?**
+
 - **Yes, causally and specifically, but not cleanly.** A single conv3 unit's activity is enough to repel the agent
   from a maze region. No other channel at that position does this at matched dose, and the same selection rule
   finds such a unit in an independently trained agent (H3).
 - **Steering is destructive.** The agent abandons that region's pellets and dies more. Single-unit steering here
   is a blunt instrument, not a precise control knob.
 - **Mechanism vs outcome.** The fc ablation shows a gap between mechanism and outcome. The predicted local
-  behaviour ("go up toward the edible ghost") changes strongly, but the global outcome (ghosts eaten) changes
-  little in agent 1111, presumably because other units and other directions compensate.
+  behaviour ("go toward the edible ghost in direction d") changes strongly in agents 1111 and 3333. The global
+  outcome (ghosts eaten per pill) changes little in agent 1111, falls in agent 2222, and *rises* in agent 3333.
+  Removing one direction's vote reroutes the agent rather than simply weakening ghost hunting.
 - **Why the fc layer is constrained.** The linear, recurrence-free policy head means fc-unit steering can only add
   fixed action biases. State-dependent steering must enter upstream, where activations pass through the fc ReLUs.
 
 **Methodological lessons.**
+
 1. Bit-exact fidelity tests are cheap and necessary. Library defaults changed under us (gymnasium's grayscale).
 2. Near-deterministic policies need injected stochasticity (sticky actions) before games can serve as
    independent samples.

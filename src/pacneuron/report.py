@@ -156,6 +156,8 @@ def screen_table(r: dict) -> str:
 def generate() -> None:
     blocks: dict[str, str] = {"models": models_table()}
     nums: dict[str, str] = {}
+    if hf := _load("hf_publish"):
+        nums["hf_collection"], nums["hf_dataset"] = hf["collection"], hf["dataset"]
     if fid := _load("fidelity"):
         blocks["fidelity"] = fidelity_table(fid)
         nums["fid_logit"] = f"{fid['max_abs_logit_diff']:.1e}"
