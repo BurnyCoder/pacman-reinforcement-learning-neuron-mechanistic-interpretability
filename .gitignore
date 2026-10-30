@@ -19,7 +19,7 @@ logs/
 *.pth
 *.npz
 !tests/fixtures/*.npz
-data/
+/data/
 .pytest_cache/
 paper/*.aux
 paper/*.log
