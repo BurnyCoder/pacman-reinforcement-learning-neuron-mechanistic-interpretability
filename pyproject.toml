@@ -1,0 +1,50 @@
+[project]
+name = "pacneuron"
+version = "0.1.0"
+description = "Neuron-level mechanistic interpretability and steering of reward-trained (no imitation) Ms. Pac-Man RL agents"
+readme = "README.md"
+authors = [
+    { name = "Libor Burian (BurnyCoder)" }
+]
+license = "MIT"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "ale-py>=0.12.1",
+    "gymnasium>=1.4.0",
+    "huggingface-hub>=2.4.0",
+    "imageio[ffmpeg]>=2.38.1",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "opencv-python>=5.0.0.93",
+    "python-dotenv>=1.2.4",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.18.1",
+    "stable-baselines3>=2.9.2",
+    "torch>=2.14.1",
+]
+
+[project.scripts]
+pacneuron = "pacneuron.pipeline:main"
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+# PyTorch CUDA wheels come from the official PyTorch index, pinned via uv sources.
+# Recipe: https://docs.astral.sh/uv/guides/integration/pytorch/ (driver here reports CUDA 13.1, so cu130 wheels run).
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]

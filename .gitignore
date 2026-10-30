@@ -1,0 +1,25 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Secrets and local config (copy .env.example -> .env)
+.env
+
+# Run logs (timestamped, regenerated on every run)
+logs/
+
+# Bulk data lives outside the repo (DATA_DIR in .env); never commit checkpoints or activation shards
+*.pth
+*.npz
+!tests/fixtures/*.npz
+data/
+.pytest_cache/
+paper/*.aux
+paper/*.log
