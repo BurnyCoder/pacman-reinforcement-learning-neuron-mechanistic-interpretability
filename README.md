@@ -44,7 +44,7 @@ questions. Which exact game fact does it track? What happens when we steer it du
     (<!--n:appo_1111:c3_ch18_cell56:pass-->pending<!--/n-->).
   - Details, nulls and off-target damage are in [reports/04_steering.md](reports/04_steering.md).
 - **Interactive microscope.** Every neuron with its frames, label and action votes:
-  https://burnycoder.github.io/mspacman-rl-neuron-interpretability/
+  https://burnycoder.github.io/pacman-reinforcement-learning-neuron-mechanistic-interpretability/
 
 ![steering video: baseline (left) vs fc neuron 453 ablated (right)](figures/video_appo_1111_fc453_ablate.gif)
 
