@@ -294,9 +294,10 @@ def confirm(seed: str) -> None:
     from pacneuron.config import HELDOUT_SEEDS, RESULTS_DIR
     from pacneuron.prereg import require_frozen
     from pacneuron.stats import holm
-    lock = require_frozen()
     name = MODELS[seed].name
-    frozen = json.loads((RESULTS_DIR / "candidates.json").read_text())
+    derived = RESULTS_DIR / f"candidates_{name}.json"  # replication agents: rule-derived candidates (H3)
+    lock = require_frozen([f"results/{derived.name}"] if derived.exists() else [])
+    frozen = json.loads((derived if derived.exists() else RESULTS_DIR / "candidates.json").read_text())
     cands = [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]
     model = _model(seed)
     root = DATA_DIR / "steer" / name / "heldout"
@@ -429,3 +430,98 @@ def conjunctions(seed: str) -> None:
     out = {k: {"median_r2": float(np.median(v)), "frac_gt_0.3": float(np.mean(v > 0.3)), "frac_gt_0.5": float(np.mean(v > 0.5))}
            for k, v in res.items()}
     write_result(f"conjunctions_{name}", {"exploratory": True, "units": int(A.shape[1]), "models": out})
+
+
+def report(seed: str) -> None:
+    """Regenerate all tables, inline numbers and figures from results/*.json."""
+    from pacneuron.report import generate
+    generate()
+    log.info("report: tables, numbers and figures regenerated")
+
+
+def site(seed: str) -> None:
+    """Export the microscope data (frames + JSON) for the GitHub Pages site."""
+    from pacneuron.export import export_site
+    export_site(seed)
+
+
+def conv3_states(seed: str) -> None:
+    """EXPLORATORY: AUROC of each conv3 channel's spatial-mean activation for global game states (discovery)."""
+    from sklearn.metrics import roc_auc_score
+    name = MODELS[seed].name
+    S = data.load_split(data.split_dir(name, "discovery"), acts=("conv3",))
+    idx = np.random.default_rng(0).choice(len(S["game"]), size=min(60000, len(S["game"])), replace=False)
+    m = S["conv3"][idx].astype(np.float32).mean((2, 3))
+    out = {}
+    for f in ("frightened", "n_danger_near", "life_lost_soon"):
+        y = S["features"][f][idx] > 0
+        out[f] = {"positive_rate": float(y.mean()), "auroc": [float(roc_auc_score(y, m[:, c])) for c in range(m.shape[1])]}
+    write_result(f"conv3_states_{name}", {"exploratory": True, "n_steps": int(len(idx)), "states": out})
+
+
+def videos(seed: str, game_seed: int = 10000, n_steps: int = 500) -> None:
+    """Side-by-side replays (baseline | steered, same game seed) for every frozen candidate of this model."""
+    import json
+
+    from pacneuron.config import FIGURES_DIR, REPO_ROOT, RESULTS_DIR
+    from pacneuron.render import capture_frames
+    from pacneuron.viz import side_by_side_video
+    name = MODELS[seed].name
+    conf = json.loads((RESULTS_DIR / f"confirm_{name}.json").read_text())
+    base_dir = data.split_dir(name, "heldout")
+    steps = [(game_seed, t) for t in range(n_steps)]
+    base = capture_frames(base_dir, steps)
+    for c in conf["candidates"]:
+        arm = capture_frames(DATA_DIR / "steer" / name / "heldout" / c["name"], steps)
+        left = [base[k] for k in steps if k in base]
+        right = [arm[k] for k in steps if k in arm]
+        box = None
+        if c["spec"].get("cell") is not None:
+            i, j = c["spec"]["cell"]
+            box = ((8 * j + 10) * 160 / 84, (8 * i + 10) * 210 / 84, (8 * j + 26) * 160 / 84, (8 * i + 26) * 210 / 84)
+        out = FIGURES_DIR / f"video_{name}_{c['name']}"
+        side_by_side_video(left, right, out, labels=("baseline", c["name"]), box=box)
+        media = REPO_ROOT / "site" / "media"
+        media.mkdir(parents=True, exist_ok=True)
+        (media / f"{name}_{c['name']}.gif").write_bytes(out.with_suffix(".gif").read_bytes())
+        log.info(f"videos: {out}.mp4/.gif ({min(len(left), len(right))} steps)")
+
+
+def derive_candidates(seed: str) -> None:
+    """H3: apply the frozen replication rules (results/candidates.json) to a new agent's DISCOVERY results.
+
+    Writes results/candidates_<model>.json; it must be committed before that agent's held-out phases run.
+    """
+    import json
+
+    from pacneuron.config import RESULTS_DIR
+    from pacneuron.features import FAMILY  # noqa: F401  (documents that labels come from the same feature set)
+    name = MODELS[seed].name
+    frozen = json.loads((RESULTS_DIR / "candidates.json").read_text())
+    audit_res = json.loads((RESULTS_DIR / f"audit_{name}.json").read_text())
+    scr = json.loads((RESULTS_DIR / f"screen_{name}.json").read_text())
+    units = {u["unit"]: u for u in audit_res["fc_units"]}
+    # rule 1: most negative fc ablation-screen effect on P(toward nearest edible ghost)
+    n = int(scr["fc_ablation"]["edible"]["most_negative"][0][0])
+    dirs = {"up": [1, 5, 6], "right": [2, 5, 7], "left": [3, 6, 8], "down": [4, 7, 8]}
+    best_dir = max(dirs, key=lambda d: units[n]["r2_by_feature"][f"dir_edible_{d}"])
+    alive = [u["unit"] for u in audit_res["fc_units"] if u["alive"] and u["unit"] != n]
+    null_fc = sorted(np.random.default_rng(0).choice(alive, 99, replace=False).tolist())
+    # rule 2: most repelling (channel, cell) of the open-loop patch screen at the p99 dose
+    top = scr["most_repelling"][0]
+    ch, cell = int(top["channel"]), [int(x) for x in top["cell"]]
+    p99 = lambda c: float(audit_res["conv3_channels"][c]["p99_cell"][cell[0]][cell[1]])
+    cands = [{"name": f"fc{n}_ablate", "rule": "fc453_ablate", "label": f"fc neuron {n} zero-ablated", "model": name,
+              "spec": {"site": "fc", "units": [n], "value": 0.0}, "metric": "ghosts_per_pill", "sign": -1,
+              "secondary_metric": {"metric": "action_given_trigger", "sign": -1,
+                                   "metric_kwargs": {"trigger": f"dir_edible_{best_dir}", "action_set": dirs[best_dir]}},
+              "null_group": "fc_ablate", "null_specs": [{"site": "fc", "units": [int(u)], "value": 0.0} for u in null_fc]},
+             {"name": f"c3_ch{ch}_cell{cell[0]}{cell[1]}", "rule": "c3_ch18_cell56",
+              "label": f"conv3 channel {ch} set to its p99 at cell ({cell[0]}, {cell[1]})", "model": name,
+              "spec": {"site": "conv3", "units": [ch], "cell": cell, "value": p99(ch)}, "metric": "approach", "sign": -1,
+              "metric_kwargs": {"target_cell": cell}, "null_group": f"c3_cell{cell[0]}{cell[1]}",
+              "null_specs": [{"site": "conv3", "units": [c], "cell": cell, "value": p99(c)} for c in range(64) if c != ch]}]
+    out = {k: frozen[k] for k in ("n_baseline", "n_candidate", "n_null")} | {
+        "derived_by": "replication_rules in results/candidates.json (no human choice)", "candidates": cands}
+    (RESULTS_DIR / f"candidates_{name}.json").write_text(json.dumps(out, indent=1))
+    log.info(f"derive_candidates {name}: {[c['label'] for c in cands]}")

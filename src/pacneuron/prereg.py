@@ -19,10 +19,11 @@ def _git(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True)
 
 
-def require_frozen() -> dict:
-    """Raise unless every frozen file exists, is tracked, and has no uncommitted changes; return lock info."""
+def require_frozen(extra: list[str] | None = None) -> dict:
+    """Raise unless every frozen file (+ `extra`, e.g. rule-derived replication candidates) exists, is tracked and
+    has no uncommitted changes; return SHA-256 hashes and the freezing commit."""
     lock = {}
-    for rel in FROZEN:
+    for rel in FROZEN + list(extra or []):
         path = REPO_ROOT / rel
         if not path.exists():
             raise RuntimeError(f"{rel} missing: freeze candidates (preregistration addendum) before confirmatory runs")
@@ -31,5 +32,5 @@ def require_frozen() -> dict:
         if _git("diff", "--quiet", "HEAD", "--", rel).returncode != 0:
             raise RuntimeError(f"{rel} has uncommitted changes")
         lock[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
-    lock["frozen_commit"] = _git("log", "-1", "--format=%H", "--", *FROZEN).stdout.strip()
+    lock["frozen_commit"] = _git("log", "-1", "--format=%H", "--", *FROZEN, *(extra or [])).stdout.strip()
     return lock

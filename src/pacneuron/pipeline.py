@@ -60,14 +60,16 @@ def main(argv=None) -> None:
     p.add_argument("--phase", required=True)
     p.add_argument("--seed", default="1111", choices=list(MODELS))
     a = p.parse_args(argv)
-    log.info(f"phase={a.phase} seed={a.seed}")
-    if a.phase == "collect-discovery":
-        collect(a.seed, "discovery")
-    elif a.phase == "collect-heldout":
-        collect(a.seed, "heldout")
-    else:
-        from pacneuron import phases
-        getattr(phases, a.phase.replace("-", "_"))(a.seed)
+    for phase in a.phase.split(","):  # comma-separated list runs phases in order (stops at the first failure)
+        log.info(f"phase={phase} seed={a.seed}")
+        if phase == "collect-discovery":
+            collect(a.seed, "discovery")
+        elif phase == "collect-heldout":
+            collect(a.seed, "heldout")
+        else:
+            from pacneuron import phases
+            getattr(phases, phase.replace("-", "_"))(a.seed)
+        log.info(f"phase={phase} seed={a.seed} done")
 
 
 if __name__ == "__main__":
