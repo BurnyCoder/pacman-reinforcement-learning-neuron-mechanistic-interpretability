@@ -384,6 +384,14 @@ Steering per agent (held-out):
 
 # 6. Limitations
 
+- **Planned but not done.**
+  - An input-pixel counterfactual for the top candidates (repainting ghosts as frightened in the observation) to
+    separate ghost appearance from correlated game state.
+  - A per-ghost "visible in the observation" flag (Atari sprite flicker can hide a ghost that RAM reports).
+  - Training dynamics over the 36 milestone checkpoints of agent 1111.
+  - Replication on agents trained with other algorithms (Stable-Baselines3 DQN/PPO).
+  - The OCAtari cross-check of RAM decoding, replaced by pixel-level validation because OCAtari's PyPI package
+    does not build.
 - **Feature dictionary.** The one-job criterion depends on a finite 40-feature dictionary of *single* variables, so
   conjunctive codes are counted as "not clean" by construction. The conjunction analysis is post hoc.
 - **Sticky actions.** These change the agent's task (it was trained without them) and lower its score. All results
