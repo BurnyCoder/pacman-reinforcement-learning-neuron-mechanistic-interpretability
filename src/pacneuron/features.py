@@ -141,9 +141,6 @@ CATEGORICAL = {"heading", "maze"}  # treated as categories (not ordinal) by the 
 # input (conv1 k8 s4 -> conv2 k4 s2 -> conv3 k3 s1); we call its central 16 px [8i+10, 8i+25] the cell "core".
 # Screen (160x210) -> obs (84x84) scaling follows the 84x84 INTER_AREA resize in env.py.
 # ------------------------------------------------------------------------------------------------------------
-CELL_TYPES = ("danger", "edible", "player", "pellet", "power")
-
-
 def screen_to_cells(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     """[..., 7, 7] bool: which conv3 cell cores contain the screen point (x, y)."""
     ox, oy = np.asarray(x) * 84 / 160, np.asarray(y) * 84 / 210
@@ -155,7 +152,6 @@ def screen_to_cells(x: np.ndarray, y: np.ndarray) -> np.ndarray:
 
 def cell_objects(ram: np.ndarray) -> dict[str, np.ndarray]:
     """Per step, which conv3 cells contain each object type: {type: [T, 7, 7] bool} (pellet: count)."""
-    T = len(ram)
     pxy, gxy = R.player_xy(ram), R.ghosts_xy(ram)
     active, edible = R.ghosts_active(ram), R.ghost_edible(ram)
     out = {"player": screen_to_cells(pxy[:, 0] + 4, pxy[:, 1] + 4.5)}

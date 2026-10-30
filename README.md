@@ -25,28 +25,49 @@ questions. Which exact game fact does it track? What happens when we steer it du
   [preregistered](reports/preregistration.md) before any data, and the steering candidates were
   [frozen](reports/preregistration_addendum.md) before any held-out game.
 
-**Highlights (agent 1111)**
-- **Negative result for "already clean".**
-  - Fraction of alive fc neurons with one main job, on held-out games:
-    - agent <!--n:appo_1111:h1_agent-->0.8%<!--/n-->
-    - random directions <!--n:appo_1111:h1_random_dirs-->0.2%<!--/n-->
-    - untrained network <!--n:appo_1111:h1_untrained-->9.4%<!--/n-->
-  - H1 is <!--n:appo_1111:h1_verdict-->supported<!--/n-->.
-  - Neurons are explained by *combinations* of game facts. Exploratory: where Ms. Pac-Man is × which way she
-    faces gives a median R² of <!--n:appo_1111:place_heading_median-->0.20<!--/n--> per neuron, vs
-    <!--n:appo_1111:median_best_disc-->0.03<!--/n--> for the best single feature.
-- **Steering (confirmatory, held-out games).**
-  - fc neuron 453 zero-ablated: ghosts eaten per power pill
-    <!--n:appo_1111:fc453_ablate:base-->0.294<!--/n--> → <!--n:appo_1111:fc453_ablate:arm-->0.228<!--/n-->
-    (<!--n:appo_1111:fc453_ablate:pass-->fails<!--/n--> the preregistered test).
-  - conv3 channel 18 set at one 7×7 cell: rate of approaching that maze location
-    <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> → <!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->
-    (<!--n:appo_1111:c3_ch18_cell56:pass-->passes<!--/n-->).
-  - Details, nulls and off-target damage are in [reports/04_steering.md](reports/04_steering.md).
-- **Interactive microscope.** Every neuron with its frames, label and action votes:
-  https://burnycoder.github.io/pacman-reinforcement-learning-neuron-mechanistic-interpretability/
+**Highlights**
 
-![steering video: baseline (left) vs fc neuron 453 ablated (right)](figures/video_appo_1111_fc453_ablate.gif)
+**Steering: one neuron creates a "no-go zone"** (agent 1111, confirmatory, held-out games).
+- **Intervention.** Setting a *single* conv3 unit (channel 18 at one 7×7 position) to its 99th-percentile
+  activation.
+- **Effect.** The agent stops approaching that part of the maze. Approach rate
+  <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> → <!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->,
+  Holm p <!--n:appo_1111:c3_ch18_cell56:p-->0.0002<!--/n-->.
+- **Specific.** It is stronger than every one of the
+  <!--n:appo_1111:c3_ch18_cell56:null_n-->63<!--/n--> other channels set at the same position. The preregistered
+  steering hypothesis (H2) is therefore **supported**.
+- **Side effects.** The agent leaves that area's pellets and dies more often.
+
+![no-go zone: baseline (left) vs conv3 channel 18 patched at the outlined cell (right)](figures/video_appo_1111_c3_ch18_cell56.gif)
+
+**A neuron for "chase the edible ghost upward"** (agent 1111).
+- **Mechanism.** Zero-ablating fc neuron 453 cuts "move up when the nearest edible ghost is up" from
+  <!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n-->.
+- **Preregistered outcome.** Ghosts eaten per power pill drops only
+  <!--n:appo_1111:fc453_ablate:base-->0.294<!--/n--> → <!--n:appo_1111:fc453_ablate:arm-->0.228<!--/n-->. That is
+  not significant, so this candidate **fails** H2. It is nonetheless the largest effect among 99 random fc
+  ablations.
+
+**"Already clean"? Not for this agent** (negative result).
+- Fraction of alive fc neurons with one main job on held-out games, agent 1111:
+  - agent <!--n:appo_1111:h1_agent-->0.8%<!--/n-->
+  - random directions <!--n:appo_1111:h1_random_dirs-->0.2%<!--/n-->
+  - untrained network <!--n:appo_1111:h1_untrained-->9.4%<!--/n-->
+- The preregistered difference test is technically <!--n:appo_1111:h1_verdict-->supported<!--/n--> for agent
+  1111 but trivially small. For agents 2222 and 3333 it is <!--n:appo_2222:h1_verdict-->not supported<!--/n--> and
+  <!--n:appo_3333:h1_verdict-->not supported<!--/n-->.
+- Neurons are instead explained by *combinations* of game facts. Exploratory: where Ms. Pac-Man is × which way
+  she faces gives a median R² of <!--n:appo_1111:place_heading_median-->0.20<!--/n--> per neuron, vs
+  <!--n:appo_1111:median_best_disc-->0.03<!--/n--> for the best single feature. They behave like
+  place × heading cells.
+
+**Replication.** The frozen selection rules applied to agents 2222 and 3333 are in
+[reports/05_replication.md](reports/05_replication.md).
+
+**Interactive microscope.** Every neuron with its frames, label and action votes:
+https://burnycoder.github.io/pacman-reinforcement-learning-neuron-mechanistic-interpretability/
+
+![where the agent goes with and without the patch](figures/occupancy_appo_1111_c3_ch18_cell56.png)
 
 ## Results
 

@@ -22,6 +22,17 @@ rule*, applied to another agent's own discovery data, find a unit whose steering
 
 ## Results
 
+### H3 summary (both replication agents)
+<!-- BEGIN:h3 -->
+| rule (frozen on agent 1111) | agent | selected unit | primary metric Δ [95% CI] | Holm p (within agent) | null units at least as strong | passes |
+|---|---|---|---|---|---|---|
+| zero-ablate the fc unit most needed for approaching edible ghosts | appo_2222 | fc neuron 379 zero-ablated | -0.101 [-0.167, -0.036] | 0.0025 | 0 of 99 | yes |
+| set the most repelling conv3 (channel, cell) to its p99 | appo_2222 | conv3 channel 3 set to its p99 at cell (0, 0) | -0.034 [-0.043, -0.026] | 0.0002 | 0 of 63 | yes |
+<!-- END:h3 -->
+
+- "No-go zone" rule: <!--n:h3:c3_ch18_cell56-->–<!--/n-->.
+- Ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->–<!--/n-->.
+
 ### Agent 2222
 <!-- BEGIN:models -->
 | agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (no sticky) |
@@ -41,8 +52,24 @@ One-job audit (discovery, exploratory):
 | untrained network (control c) | 500 | 9.2% [5.0%, 12.0%] | 0.540 | 0.083 |
 <!-- END:audit_appo_2222 -->
 
+One-job test on held-out games (H1, confirmatory):
+<!-- BEGIN:h1_appo_2222 -->
+| unit set (held-out, confirmatory) | units | one-job fraction [95% CI] | median R²_all | median best single R² |
+|---|---|---|---|---|
+| trained agent (fc units) | 380 | 1.1% [0.8%, 1.1%] | 0.731 | 0.027 |
+| random directions (control a) | 512 | 1.0% [0.4%, 1.4%] | 0.771 | 0.189 |
+| non-negative unit mixtures (control b) | 512 | 1.4% [1.2%, 1.6%] | 0.770 | 0.046 |
+| untrained network (control c) | 500 | 10.2% [6.6%, 13.2%] | 0.550 | 0.091 |
+
+H1 test (agent minus random directions): -0.0% [-0.3%, 0.5%]; H1 not supported.
+<!-- END:h1_appo_2222 -->
+
 Steering (held-out, confirmatory):
 <!-- BEGIN:steer_appo_2222 -->
+| intervention | primary metric (predicted sign) | baseline → steered | Δ [95% CI] | Holm p | above null 95th pct? | H2 |
+|---|---|---|---|---|---|---|
+| fc neuron 379 zero-ablated | ghosts_per_pill (−) | 0.463 → 0.362 | -0.101 [-0.167, -0.036] | 0.0025 | yes (null q95 0.027) | pass |
+| conv3 channel 3 set to its p99 at cell (0, 0) | approach (−) | 0.430 → 0.396 | -0.034 [-0.043, -0.026] | 0.0002 | yes (null q95 0.007) | pass |
 <!-- END:steer_appo_2222 -->
 
 ### Agent 3333
@@ -55,6 +82,18 @@ One-job audit (discovery, exploratory):
 | non-negative unit mixtures (control b) | 512 | 0.0% [0.0%, 0.4%] | 0.718 | 0.052 |
 | untrained network (control c) | 501 | 11.6% [7.8%, 13.8%] | 0.526 | 0.093 |
 <!-- END:audit_appo_3333 -->
+
+One-job test on held-out games (H1, confirmatory):
+<!-- BEGIN:h1_appo_3333 -->
+| unit set (held-out, confirmatory) | units | one-job fraction [95% CI] | median R²_all | median best single R² |
+|---|---|---|---|---|
+| trained agent (fc units) | 420 | 0.0% [0.0%, 0.0%] | 0.693 | 0.027 |
+| random directions (control a) | 512 | 0.0% [0.0%, 0.0%] | 0.761 | 0.187 |
+| non-negative unit mixtures (control b) | 512 | 0.0% [0.0%, 0.0%] | 0.736 | 0.055 |
+| untrained network (control c) | 501 | 10.4% [8.2%, 12.4%] | 0.546 | 0.096 |
+
+H1 test (agent minus random directions): 0.0% [0.0%, 0.0%]; H1 not supported.
+<!-- END:h1_appo_3333 -->
 
 Steering (held-out, confirmatory):
 <!-- BEGIN:steer_appo_3333 -->

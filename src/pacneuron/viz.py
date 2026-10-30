@@ -53,7 +53,7 @@ def clean_fraction_bars(summary: dict, path: Path, title: str) -> None:
     ax.barh(y, vals, color=colors, height=0.55)
     for yi, (lo, hi) in zip(y, errs):
         ax.plot([lo, hi], [yi, yi], color=INK, lw=1)
-    for yi, v, (lo, hi) in zip(y, vals, errs):
+    for yi, v, (_lo, hi) in zip(y, vals, errs):
         ax.text(max(v, hi) + 0.003, yi, f"{100 * v:.1f}%", va="center", fontsize=8, color=INK2)
     ax.set_yticks(y, [lbl for _, lbl in order])
     ax.set_xlabel("fraction of units with one main job (R²_all ≥ 0.3, best single feature ≥ 70% of it)")
@@ -106,34 +106,6 @@ def effect_vs_null(cands: list[dict], path: Path, title: str, xlabel: str) -> No
     ax.legend(loc="upper left", fontsize=8, frameon=True, facecolor=SURF, edgecolor=GRID)
     ax.set_title(title, loc="left")
     save(fig, path)
-
-
-def heat_on_frame(frame: np.ndarray, values: np.ndarray, path: Path, title: str, vmax: float | None = None,
-                  label: str = "") -> None:
-    """Overlay a 7x7 conv3-cell map (diverging, 0 = gray) on an RGB frame (cell (i,j) -> its RF core on screen)."""
-    style()
-    fig, ax = plt.subplots(figsize=(3.6, 4.2))
-    ax.imshow(frame[:172], extent=(0, 160, 172, 0))
-    vmax = vmax or float(np.abs(values).max()) or 1.0
-    for i in range(7):
-        for j in range(7):
-            x0, x1 = (8 * j + 10) * 160 / 84, (8 * j + 26) * 160 / 84
-            y0, y1 = (8 * i + 10) * 210 / 84, (8 * i + 26) * 210 / 84
-            col = DIVERGING(0.5 + 0.5 * values[i, j] / vmax)
-            ax.add_patch(plt.Rectangle((x0, y0), x1 - x0, y1 - y0, color=col, alpha=0.75, lw=0))
-    ax.set_xlim(0, 160)
-    ax.set_ylim(172, 0)
-    ax.axis("off")
-    sm = plt.cm.ScalarMappable(cmap=DIVERGING, norm=plt.Normalize(-vmax, vmax))
-    fig.colorbar(sm, ax=ax, fraction=0.04, pad=0.02, label=label)
-    ax.set_title(title, loc="left")
-    save(fig, path)
-
-
-def frame_grid(frames: list[np.ndarray], path: Path, cols: int = 4) -> None:
-    from pacneuron.render import grid
-    path.parent.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(grid(frames, cols=cols)).save(path)
 
 
 def side_by_side_video(left: list[np.ndarray], right: list[np.ndarray], path: Path, labels=("baseline", "steered"),

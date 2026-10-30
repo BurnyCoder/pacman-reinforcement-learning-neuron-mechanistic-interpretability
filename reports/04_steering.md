@@ -78,9 +78,55 @@ Videos (left: unsteered, right: steered, same game seed and sticky-action RNG):
 - `figures/video_appo_1111_fc453_ablate.mp4`
 - `figures/video_appo_1111_c3_ch18_cell56.mp4`, with the patched cell outlined.
 
-## Interpretation and caveats
-- All effects are causal: interventions on the network during play, compared with the same seeds without
-  intervention.
-- What each confirmed effect means, and the matched-null comparison, is filled in after the run.
-- Steering in this agent tends to damage overall play (return), even for random units. The null distribution,
-  not the baseline, is the right yardstick for "specific".
+![occupancy with and without the channel-18 patch](../figures/occupancy_appo_1111_c3_ch18_cell56.png)
+
+## Interpretation (agent 1111)
+
+### conv3 channel 18 at cell (5,6): a single unit that creates a "no-go zone" (H2 passes)
+- **The intervention.** Writing the unit's own 99th-percentile activation into one position of one conv3 channel.
+  The unit's receptive field covers the lower-right corridors of the maze (outlined in the video and the occupancy
+  figure).
+- **The effect.** The agent moves toward that location less often:
+  - approach rate <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> →
+    <!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->, Δ <!--n:appo_1111:c3_ch18_cell56:delta-->-0.063 [-0.077, -0.050]<!--/n-->;
+  - Holm p <!--n:appo_1111:c3_ch18_cell56:p-->0.0002<!--/n-->.
+- **Specificity.** The other <!--n:appo_1111:c3_ch18_cell56:null_n-->63<!--/n--> channels, set to *their*
+  99th percentile at the same position, barely change approach (mean Δ
+  <!--n:appo_1111:c3_ch18_cell56:null_mean-->-0.004<!--/n-->).
+  <!--n:appo_1111:c3_ch18_cell56:null_ge-->0<!--/n--> of them reach channel 18's effect. The repulsion is a
+  property of this channel at this place, not of perturbing conv3 there.
+- **Consequences.** The agent leaves pellets in the avoided region uneaten, so levels last longer and it dies more:
+  - deaths per 1k steps Δ <!--n:appo_1111:c3_ch18_cell56:deaths_per_1k-->4.2 [3.3, 5.1]<!--/n-->;
+  - return Δ <!--n:appo_1111:c3_ch18_cell56:return-->-2490 [-2990, -2005]<!--/n-->.
+- **What it does not show.** That channel 18 "means" danger. Its object-detection AUROCs are near chance (see the
+  audit). The result is causal and behavioural ("activity here repels the agent from here"). The semantic label
+  remains open.
+- **Prior work.** This parallels the "cheese channel" retargeting of a Procgen maze agent
+  ([Mini, Turner et al. 2023](https://arxiv.org/abs/2310.08043)), here with a repelling sign and in an Atari agent
+  trained by APPO.
+
+### fc neuron 453 ablation: a mechanistic effect that does not carry to the preregistered outcome (H2 fails)
+- **The mechanism replicates.** Ablating fc 453 sharply reduces moving up when the nearest edible ghost is up:
+  <!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n--> (secondary metric, not in the Holm family). The audit predicted
+  this: the unit tracks "edible ghost is up" and votes UP.
+- **The primary outcome does not.** Ghosts eaten per power pill fall only from
+  <!--n:appo_1111:fc453_ablate:base-->0.294<!--/n--> to <!--n:appo_1111:fc453_ablate:arm-->0.228<!--/n-->
+  (Δ <!--n:appo_1111:fc453_ablate:delta-->-0.066 [-0.192, 0.101]<!--/n-->, Holm p <!--n:appo_1111:fc453_ablate:p-->0.2280<!--/n-->).
+  That is not significant, so the candidate **fails** H2 as preregistered.
+- **But it is the largest effect in its layer.** <!--n:appo_1111:fc453_ablate:null_ge-->0<!--/n--> of
+  <!--n:appo_1111:fc453_ablate:null_n-->99<!--/n--> random fc ablations reduce ghost eating as much (null mean
+  <!--n:appo_1111:fc453_ablate:null_mean-->0.006<!--/n-->). The miss is a power problem with a noisy per-game ratio
+  metric, not evidence that the unit is irrelevant.
+- **Winner's curse.** The discovery pilot showed a much larger drop:
+  <!--n:appo_1111:pilot:fc453_ablate:ghosts_per_pill-->0.392 → 0.140 (Δ -0.252 [-0.331, -0.171])<!--/n-->. Selecting a candidate on its discovery effect
+  inflates that estimate, which is exactly why confirmatory effect sizes come only from held-out games.
+
+### Caveats
+- Steering this agent damages overall play for most interventions; even the positive control hurts. The matched
+  null distribution, not the unsteered baseline, is the right yardstick for "specific".
+- Doses are fixed at each unit's discovery 99th percentile. Larger doses produce larger effects in the
+  open-loop screen, but leave the activation distribution. Exploratory: the strongest single-unit repulsion at
+  junctions is <!--n:appo_1111:dose:p99-->-5.8 pp<!--/n--> at p99, <!--n:appo_1111:dose:max-->-11.0 pp<!--/n--> at the
+  channel's max, and <!--n:appo_1111:dose:2x_max-->-40.7 pp<!--/n--> at twice the max.
+- All games use sticky actions (p = 0.25). Steered and baseline games share seeds, but their trajectories diverge
+  once an action differs, so per-game differences mix direct and downstream effects.

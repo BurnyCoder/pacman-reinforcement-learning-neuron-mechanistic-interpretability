@@ -1,0 +1,35 @@
+{
+ "exploratory": true,
+ "doses": {
+  "p99": {
+   "strongest_repel": -0.058310557156801224,
+   "channel": 18,
+   "cell": [
+    5,
+    6
+   ],
+   "strongest_attract": 0.0357121005654335,
+   "mean_abs": 0.004961528815329075
+  },
+  "max": {
+   "strongest_repel": -0.1096263974905014,
+   "channel": 18,
+   "cell": [
+    5,
+    6
+   ],
+   "strongest_attract": 0.06849553436040878,
+   "mean_abs": 0.016306377947330475
+  },
+  "2x_max": {
+   "strongest_repel": -0.4066017270088196,
+   "channel": 6,
+   "cell": [
+    2,
+    5
+   ],
+   "strongest_attract": 0.159661665558815,
+   "mean_abs": 0.05148877948522568
+  }
+ }
+}

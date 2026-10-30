@@ -13,7 +13,6 @@ Usage: python scripts/sf_golden_wsl.py <checkpoint.pth> <cfg.json> <out.npz>
 
 import json
 import sys
-from types import SimpleNamespace
 
 import gym
 import numpy as np

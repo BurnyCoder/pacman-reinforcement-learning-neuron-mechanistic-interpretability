@@ -696,7 +696,6 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "scikit-learn" },
     { name = "scipy" },
-    { name = "stable-baselines3" },
     { name = "torch", version = "2.14.1+cu130", source = { registry = "https://download.pytorch.org/whl/cu130" }, marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
     { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
 ]
@@ -718,7 +717,6 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.2.4" },
     { name = "scikit-learn", specifier = ">=1.9.1" },
     { name = "scipy", specifier = ">=1.18.1" },
-    { name = "stable-baselines3", specifier = ">=2.9.2" },
     { name = "torch", marker = "sys_platform != 'linux' and sys_platform != 'win32'", specifier = ">=2.14.1" },
     { name = "torch", marker = "sys_platform == 'linux' or sys_platform == 'win32'", specifier = ">=2.14.1", index = "https://download.pytorch.org/whl/cu130" },
 ]
@@ -905,22 +903,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
-]
-
-[[package]]
-name = "stable-baselines3"
-version = "2.9.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "cloudpickle" },
-    { name = "gymnasium" },
-    { name = "numpy" },
-    { name = "torch", version = "2.14.1+cu130", source = { registry = "https://download.pytorch.org/whl/cu130" }, marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ab/86/fb86bf20bc2321d14a5a40221119043186efaebe2490e1038d17e4a4783e/stable_baselines3-2.9.2.tar.gz", hash = "sha256:8af267e9513343f481b3f0680b7740ad79a746873db24f18a9fb2edcbd9a2df7", size = 223761, upload-time = "2026-10-26T09:35:30.876Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/c0/d4f648cbfb1efce94ad0dd0db3487e3e8f2bd572f035cfc0fc1b8a070cfe/stable_baselines3-2.9.2-py3-none-any.whl", hash = "sha256:0b7db1789bea31d43b3e9be4f88abf639549b587f2bf2a2461ee9d3d77c68e96", size = 188412, upload-time = "2026-10-26T09:35:28.923Z" },
 ]
 
 [[package]]

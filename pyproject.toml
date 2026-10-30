@@ -19,7 +19,6 @@ dependencies = [
     "python-dotenv>=1.2.4",
     "scikit-learn>=1.9.1",
     "scipy>=1.18.1",
-    "stable-baselines3>=2.9.2",
     "torch>=2.14.1",
 ]
 

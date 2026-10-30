@@ -6,39 +6,38 @@ date: "October 2026"
 
 # Abstract
 
-**Question.** Goodfire's essay "Neural Networks Are Already Clean" argues that most individual neurons of trained
-networks have one main job. We test this claim, and whether single neurons can steer behaviour, in a deep RL agent
-that learned Atari Ms. Pac-Man from game reward alone. The agent is a public Sample Factory APPO agent with a
-Nature-CNN torso, trained for 2B environment steps.
+Goodfire's essay "Neural Networks Are Already Clean" argues that most individual neurons of trained networks have
+one main job. We test this claim, and whether single units can steer behaviour, in three deep RL agents that
+learned Atari Ms. Pac-Man from game reward alone. They are public Sample Factory APPO agents with a Nature-CNN torso,
+trained for 2B environment steps.
 
-**Setup.**
-- We re-implement the agent in PyTorch, bit-exact against the original stack (max logit difference
-  <!--n:fid_logit-->1.1e-05<!--/n-->).
-- We decode exact game state from the console RAM. This includes two frightened-mode addresses that we identify
-  and validate (<!--n:appo_1111:edible_agree-->97.1%<!--/n--> agreement with sprite colours).
-- We label every unit against 40 ground-truth features.
+We re-implement the agents in PyTorch, bit-exact against the original stack (max logit difference
+<!--n:fid_logit-->1.1e-05<!--/n-->). We decode exact game state from the console RAM, including two frightened-mode
+addresses that we identify (<!--n:appo_1111:edible_agree-->97.1%<!--/n--> agreement with sprite colours), and label
+every unit against 40 ground-truth features under a preregistered protocol.
 
-**Neuron audit (preregistered H1).** On held-out games, the fraction of alive fc neurons with one main job is:
+**Not "already clean".** On held-out games, the fraction of alive fc neurons with one main job is
+<!--n:appo_1111:h1_agent-->0.8%<!--/n-->, vs <!--n:appo_1111:h1_random_dirs-->0.2%<!--/n--> for random directions and
+<!--n:appo_1111:h1_untrained-->9.4%<!--/n--> for an untrained network. The preregistered privileged-basis test is
+<!--n:appo_1111:h1_verdict-->supported<!--/n--> for agent 1111, but the effect is trivially small. It is
+<!--n:appo_2222:h1_verdict-->not supported<!--/n--> for agent 2222 and <!--n:appo_3333:h1_verdict-->not supported<!--/n-->
+for agent 3333. Neurons are instead conjunctive. Exploratorily, Ms. Pac-Man's position × heading explains a median
+R² of <!--n:appo_1111:place_heading_median-->0.20<!--/n--> per neuron, vs <!--n:appo_1111:median_best_disc-->0.03<!--/n-->
+for the best single feature.
 
-| unit set | one-job fraction |
-|---|---|
-| agent | <!--n:appo_1111:h1_agent-->0.8%<!--/n--> |
-| random directions | <!--n:appo_1111:h1_random_dirs-->0.2%<!--/n--> |
-| untrained network | <!--n:appo_1111:h1_untrained-->9.4%<!--/n--> |
+**One unit, a no-go zone.** Two steering candidates were frozen before any held-out data. Setting a single conv3
+unit (channel 18 at one spatial position) to its 99th percentile makes the agent avoid the corresponding maze
+region: approach rate <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> →
+<!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->, Holm p <!--n:appo_1111:c3_ch18_cell56:p-->0.0002<!--/n-->. This
+effect is stronger than that of each of the 63 other channels at that position (the preregistered H2 passes).
+Ablating fc neuron 453, a "chase the edible ghost upward" unit, cuts that specific behaviour but does not
+significantly reduce ghosts eaten per power pill (H2 fails for this candidate).
 
-H1 is <!--n:appo_1111:h1_verdict-->supported<!--/n-->. An exploratory conjunction analysis shows the neurons are
-better described as place × heading cells (median R² <!--n:appo_1111:place_heading_median-->0.20<!--/n-->).
+**Replication.** Frozen selection rules applied to the other two agents give the following (H3):
+- no-go-zone rule: <!--n:h3:c3_ch18_cell56-->–<!--/n-->;
+- ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->–<!--/n-->.
 
-**Steering (preregistered H2).** Two candidates were frozen before any held-out data. On held-out games, paired by
-seed:
-- Zero-ablating fc neuron 453 changes ghosts eaten per power pill from <!--n:appo_1111:fc453_ablate:base-->0.294<!--/n-->
-  to <!--n:appo_1111:fc453_ablate:arm-->0.228<!--/n--> (<!--n:appo_1111:fc453_ablate:pass-->fails<!--/n--> the
-  preregistered test against 99 matched random-unit nulls).
-- Setting conv3 channel 18 at one spatial cell changes the rate of approaching that maze location from
-  <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> to <!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->
-  (<!--n:appo_1111:c3_ch18_cell56:pass-->passes<!--/n-->).
-
-We report all preregistered tests, deviations, controls and negative results.
+All tests, deviations and negative results are reported.
 
 # 1. Introduction
 
@@ -256,6 +255,10 @@ Discovery-phase evidence that led to the candidates (exploratory):
 
 ## 4.4 H3: replication
 <!-- BEGIN:steer_appo_2222 -->
+| intervention | primary metric (predicted sign) | baseline → steered | Δ [95% CI] | Holm p | above null 95th pct? | H2 |
+|---|---|---|---|---|---|---|
+| fc neuron 379 zero-ablated | ghosts_per_pill (−) | 0.463 → 0.362 | -0.101 [-0.167, -0.036] | 0.0025 | yes (null q95 0.027) | pass |
+| conv3 channel 3 set to its p99 at cell (0, 0) | approach (−) | 0.430 → 0.396 | -0.034 [-0.043, -0.026] | 0.0002 | yes (null q95 0.007) | pass |
 <!-- END:steer_appo_2222 -->
 
 <!-- BEGIN:steer_appo_3333 -->
@@ -263,7 +266,41 @@ Discovery-phase evidence that led to the candidates (exploratory):
 
 # 5. Discussion
 
-(Written after all confirmatory runs; see section 9.)
+**Are the neurons clean?**
+- **Not under single-feature labels.** With a 40-feature dictionary of single game variables, almost no fc neuron
+  of these agents has one main job, and the agents are no cleaner than random directions in a meaningful way.
+- **The basis is still not arbitrary.**
+  - Random directions score *higher* best-single-feature R² than neurons (Fig. R²). Dense mixtures pick up slow
+    global variables such as pellets remaining.
+  - Neurons are sparse (they fire on a minority of steps) and conjunctive: position × heading explains them far
+    better than any single fact.
+- **What the units are.** They resemble place cells more than "ghost detectors". This is consistent with saliency
+  studies of Ms. Pac-Man agents, which found attention on corridors rather than ghosts
+  [(Greydanus et al. 2018)](https://arxiv.org/abs/1711.00138).
+- **Reconciling with Goodfire.** Goodfire's labels are free-text visual descriptions, which can express such
+  conjunctions. Our result is a statement about a ground-truth *variable* basis. The conjunction analysis is post
+  hoc and should be tested with a preregistered conjunctive dictionary.
+
+**Can single units steer behaviour?**
+- **Yes, causally and specifically, but not cleanly.** A single conv3 unit's activity is enough to repel the agent
+  from a maze region. No other channel at that position does this at matched dose, and the same selection rule
+  finds such a unit in an independently trained agent (H3).
+- **Steering is destructive.** The agent abandons that region's pellets and dies more. Single-unit steering here
+  is a blunt instrument, not a precise control knob.
+- **Mechanism vs outcome.** The fc ablation shows a gap between mechanism and outcome. The predicted local
+  behaviour ("go up toward the edible ghost") changes strongly, but the global outcome (ghosts eaten) changes
+  little in agent 1111, presumably because other units and other directions compensate.
+- **Why the fc layer is constrained.** The linear, recurrence-free policy head means fc-unit steering can only add
+  fixed action biases. State-dependent steering must enter upstream, where activations pass through the fc ReLUs.
+
+**Methodological lessons.**
+1. Bit-exact fidelity tests are cheap and necessary. Library defaults changed under us (gymnasium's grayscale).
+2. Near-deterministic policies need injected stochasticity (sticky actions) before games can serve as
+   independent samples.
+3. Discovery-pilot effects shrink on held-out data (winner's curse). Confirmatory effect sizes must come from
+   held-out games.
+4. A preregistered difference test needs a minimum effect size. Our H1 criterion was "passed" by a 0.6
+   percentage-point difference.
 
 # 6. Limitations
 
@@ -280,7 +317,15 @@ Discovery-phase evidence that led to the candidates (exploratory):
 
 # 7. Conclusion
 
-(Written after all confirmatory runs.)
+**Clean?** In three reward-trained Ms. Pac-Man agents, individual neurons are not "already clean" with respect to
+exact single game variables. They are sparse, conjunctive, place-like codes.
+
+**Steerable?** Yes, causally and specifically. Single units steer behaviour beyond matched random units: a single
+conv3 unit creates a reproducible no-go zone, and a single fc unit gates a predicted piece of ghost-chasing. These
+effects come with substantial collateral damage.
+
+**Toolkit.** The fidelity-checked models, RAM ground truth, preregistration and microscope make these agents a
+convenient testbed for future work: conjunctive dictionaries, sparse autoencoders, and other algorithms.
 
 # Appendix A. Fidelity details
 See `reports/01_fidelity.md`.
