@@ -50,4 +50,4 @@ def run_arm(model, seeds, spec: dict | None, out_dir: Path, desc: str) -> None:
 def arm_metrics(out_dir: Path, **metric_kwargs) -> dict[int, dict]:
     """{game seed: metric dict} for every recorded game of an arm."""
     bank = data.load_bank(out_dir)
-    return {g["seed"]: game_metrics(g, bank.mazes, **metric_kwargs) for g in data.load_games(out_dir)}
+    return {g["seed"]: game_metrics(g, bank.mazes, **metric_kwargs) for g in data.load_games(out_dir, KEEP)}

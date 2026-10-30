@@ -17,20 +17,24 @@ from pacneuron.config import NUM_WORKERS
 
 
 def _replay_one(args):
-    path, steps = args
+    path, steps, size = args
+    from PIL import Image
+
     from pacneuron.env import replay  # imported in the child (spawn) to keep the parent light
     with np.load(path) as z:
         seed, actions = int(z["seed"]), z["action"]
     out = replay(seed, actions, capture=set(steps))
-    return {(seed, t): out[t]["rgb"] for t in steps if t in out}
+    shrink = (lambda f: f) if size is None else (
+        lambda f: np.asarray(Image.fromarray(f[:172]).resize(size, Image.LANCZOS)))  # playfield only, downsampled
+    return {(seed, t): shrink(out[t]["rgb"]) for t in steps if t in out}
 
 
-def capture_frames(directory: Path, requests) -> dict[tuple[int, int], np.ndarray]:
-    """requests: iterable of (seed, t). Returns {(seed, t): RGB frame [210,160,3]}."""
+def capture_frames(directory: Path, requests, size: tuple[int, int] | None = None) -> dict[tuple[int, int], np.ndarray]:
+    """requests: iterable of (seed, t). Returns {(seed, t): RGB frame} (full 210x160, or playfield resized to size)."""
     by_game: dict[int, set] = {}
     for seed, t in requests:
         by_game.setdefault(int(seed), set()).add(int(t))
-    jobs = [(directory / f"seed_{s:06d}.npz", sorted(ts)) for s, ts in by_game.items()]
+    jobs = [(directory / f"seed_{s:06d}.npz", sorted(ts), size) for s, ts in by_game.items()]
     frames: dict = {}
     with mp.get_context("spawn").Pool(min(NUM_WORKERS, max(len(jobs), 1))) as pool:
         for part in pool.imap_unordered(_replay_one, jobs):

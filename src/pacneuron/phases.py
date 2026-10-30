@@ -100,6 +100,7 @@ def audit(seed: str, n_boot: int = 2000) -> None:
     for k, (s1, sall) in r2.items():
         clean_boot[k] = np.array([AU.clean_mask(s1.r2(w), sall.r2(w)).mean() for w in W])
         summary[k] = {"units": int(s1.sse.shape[-1]), "clean_frac": float(AU.clean_mask(s1.r2(), sall.r2()).mean()),
+                      "ci": np.quantile(clean_boot[k], [0.025, 0.975]).tolist(),
                       "median_r2_all": float(np.median(sall.r2())), "median_best_r2": float(np.median(s1.r2().max(0)))}
     for k in ("random_dirs", "nonneg_mix", "untrained"):
         d = clean_boot["agent"] - clean_boot[k]
@@ -186,3 +187,150 @@ def screen(seed: str) -> None:
         "fc_ablation": {k: {"most_negative": [[int(n), float(v[n])] for n in np.argsort(v)[:15]],
                             "most_positive": [[int(n), float(v[n])] for n in np.argsort(v)[::-1][:15]]}
                         for k, v in ab.items()}})
+
+
+def _paired_effect(base: dict, arm: dict, metric: str, sign: int) -> dict:
+    """Paired (same game seed) difference of a metric between an arm and the baseline, with CI and p-value."""
+    from pacneuron.stats import mean_ci, paired_signflip_p
+    seeds = [s for s in arm if s in base and np.isfinite(arm[s].get(metric, np.nan))
+             and np.isfinite(base[s].get(metric, np.nan))]
+    d = np.array([arm[s][metric] - base[s][metric] for s in seeds])
+    if len(d) < 3:
+        return {"n": len(d)}
+    m, lo, hi = mean_ci(d)
+    return {"n": len(d), "delta": m, "ci": [lo, hi], "p_one_sided": paired_signflip_p(d, sign),
+            "base_mean": float(np.mean([base[s][metric] for s in seeds])),
+            "arm_mean": float(np.mean([arm[s][metric] for s in seeds]))}
+
+
+def pilot(seed: str, n_games: int = 30) -> None:
+    """Exploratory closed-loop pilots on DISCOVERY seeds for the specs in results/pilot_specs_<model>.json.
+
+    Each spec: {"name", "spec": intervention, "metric": name, "sign": +1/-1, "metric_kwargs": {...}}. The baseline is
+    the discovery collection itself (same seeds, same sticky-action RNG, unsteered) -> paired comparison.
+    """
+    import json
+
+    from pacneuron import steer
+    from pacneuron.config import DISCOVERY_SEEDS, RESULTS_DIR
+    name = MODELS[seed].name
+    specs = json.loads((RESULTS_DIR / f"pilot_specs_{name}.json").read_text())
+    model = _model(seed)
+    seeds = DISCOVERY_SEEDS[:n_games]
+    base_dir = data.split_dir(name, "discovery")
+    results = []
+    for c in specs:
+        arm_dir = DATA_DIR / "steer" / name / "pilot" / c["name"]
+        if not (arm_dir / "mazes.pkl").exists():
+            steer.run_arm(model, seeds, c["spec"], arm_dir, desc=f"pilot/{c['name']}")
+        kw = c.get("metric_kwargs", {})
+        arm = steer.arm_metrics(arm_dir, **kw)
+        base = {s: m for s, m in steer.arm_metrics(base_dir, **kw).items() if s in arm}
+        eff = {mt: _paired_effect(base, arm, mt, c["sign"] if mt == c["metric"] else 1)
+               for mt in [c["metric"], "return", "deaths_per_1k", "pellets_per_1k", "ghosts_per_pill"]}
+        results.append({"name": c["name"], "spec": c["spec"], "metric": c["metric"], "sign": c["sign"], "effects": eff})
+        log.info(f"pilot {c['name']}: {c['metric']} delta={eff[c['metric']].get('delta')} ci={eff[c['metric']].get('ci')}")
+    write_result(f"pilot_{name}", {"model": name, "split": "discovery", "n_games": n_games, "candidates": results})
+
+
+def _start_groups(S: dict) -> np.ndarray:
+    """[G] id of each game's start state (identical first in-control RAM): robustness clusters for games that
+    share a start (they follow the same trajectory until sticky actions/sampling make them diverge)."""
+    keys: dict[bytes, int] = {}
+    ids = [keys.setdefault(S["ram"][np.flatnonzero(S["game"] == gi)[0]].tobytes(), len(keys))
+           for gi in range(int(S["game"].max()) + 1)]
+    return np.array(ids)
+
+
+def h1(seed: str, n_boot: int = 10000) -> None:
+    """Confirmatory H1 (preregistration §5): fit on all discovery games, score on held-out games."""
+    from pacneuron.prereg import require_frozen
+    from pacneuron.stats import bootstrap_weights
+    lock = require_frozen()
+    name = MODELS[seed].name
+    Sf = data.load_split(data.split_dir(name, "discovery"), acts=("fc_pre", "aux_fc_pre"))
+    Se = data.load_split(data.split_dir(name, "heldout"), acts=("fc_pre", "aux_fc_pre"))
+    relu = lambda x: np.maximum(x.astype(np.float32), 0)
+    fc_f, fc_e, ct_f, ct_e = relu(Sf["fc_pre"]), relu(Se["fc_pre"]), relu(Sf["aux_fc_pre"]), relu(Se["aux_fc_pre"])
+    alive, alive_c = AU.alive(fc_f), AU.alive(ct_f)
+    Q, Wmix = AU.random_directions(fc_f.shape[1]), AU.nonneg_mixtures(np.flatnonzero(alive), fc_f.shape[1])
+    sets = {"agent": (fc_f[:, alive], fc_e[:, alive]), "random_dirs": (fc_f @ Q, fc_e @ Q),
+            "nonneg_mix": (fc_f @ Wmix, fc_e @ Wmix), "untrained": (ct_f[:, alive_c], ct_e[:, alive_c])}
+    ge, n_ev = Se["game"], int(Se["game"].max()) + 1
+    stats = {}
+    for k, (Af, Ae) in sets.items():
+        log.info(f"h1 {name}: {k} ({Af.shape[1]} units)")
+        stats[k] = (AU.r2_single(Af, Sf["features"], Ae, Se["features"], ge, n_ev)[0],
+                    AU.r2_ceiling(Af, Sf["features"], Ae, Se["features"], ge, n_ev))
+    W = bootstrap_weights(n_ev, n_boot, seed=1)
+    groups = _start_groups(Se)
+    Wg = bootstrap_weights(int(groups.max()) + 1, 2000, seed=2)[:, groups]  # resample start-state clusters
+    out = {"lock": lock, "n_heldout_games": n_ev, "n_start_groups": int(groups.max()) + 1, "sets": {}}
+    boots = {}
+    for k, (s1, sa) in stats.items():
+        boots[k] = np.array([AU.clean_mask(s1.r2(w), sa.r2(w)).mean() for w in W])
+        bg = np.array([AU.clean_mask(s1.r2(w), sa.r2(w)).mean() for w in Wg])
+        r1, ra = s1.r2(), sa.r2()
+        sweep = {f"{ta:.1f}_{tr:.1f}": float(AU.clean_mask(r1, ra, ta, tr).mean())
+                 for ta in (0.1, 0.2, 0.3, 0.4, 0.5) for tr in (0.5, 0.6, 0.7, 0.8, 0.9)}
+        out["sets"][k] = {"units": int(r1.shape[1]), "clean_frac": float(AU.clean_mask(r1, ra).mean()),
+                          "ci": np.quantile(boots[k], [0.025, 0.975]).tolist(), "ci_start_groups":
+                          np.quantile(bg, [0.025, 0.975]).tolist(), "threshold_sweep": sweep,
+                          "median_r2_all": float(np.median(ra)), "median_best_r2": float(np.median(r1.max(0))),
+                          "r2_all": ra.tolist(), "best_r2": r1.max(0).tolist()}
+    for k in ("random_dirs", "nonneg_mix", "untrained"):
+        d = boots["agent"] - boots[k]
+        out["sets"]["agent"][f"diff_vs_{k}"] = {"mean": float(d.mean()), "ci": np.quantile(d, [0.025, 0.975]).tolist()}
+    ci = out["sets"]["agent"]["diff_vs_random_dirs"]["ci"]
+    out["H1_supported"] = bool(ci[0] > 0)
+    write_result(f"h1_{name}", out)
+
+
+def confirm(seed: str) -> None:
+    """Confirmatory steering (preregistration §6) for the frozen candidates on held-out games."""
+    import json
+
+    from pacneuron import steer
+    from pacneuron.config import HELDOUT_SEEDS, RESULTS_DIR
+    from pacneuron.prereg import require_frozen
+    from pacneuron.stats import holm
+    lock = require_frozen()
+    name = MODELS[seed].name
+    frozen = json.loads((RESULTS_DIR / "candidates.json").read_text())
+    cands = [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]
+    model = _model(seed)
+    root = DATA_DIR / "steer" / name / "heldout"
+    base_dir = root / "baseline"
+    if not (base_dir / "mazes.pkl").exists():
+        steer.run_arm(model, HELDOUT_SEEDS[:frozen["n_baseline"]], None, base_dir, desc="heldout/baseline")
+    results = []
+    for c in cands:
+        kw = c.get("metric_kwargs", {})
+        arm_dir = root / c["name"]
+        if not (arm_dir / "mazes.pkl").exists():
+            steer.run_arm(model, HELDOUT_SEEDS[:frozen["n_candidate"]], c["spec"], arm_dir, desc=f"heldout/{c['name']}")
+        base = steer.arm_metrics(base_dir, **kw)
+        arm = steer.arm_metrics(arm_dir, **kw)
+        eff = {mt: _paired_effect(base, arm, mt, c["sign"] if mt == c["metric"] else 1)
+               for mt in [c["metric"], "return", "deaths_per_1k", "pellets_per_1k", "ghosts_per_pill"]}
+        null_deltas = []
+        for k, ns in enumerate(c["null_specs"]):
+            nd = root / f"null_{c['null_group']}_{k:03d}"
+            if not (nd / "mazes.pkl").exists():
+                steer.run_arm(model, HELDOUT_SEEDS[:frozen["n_null"]], ns, nd, desc=f"heldout/null_{c['null_group']}_{k}")
+            nm = steer.arm_metrics(nd, **kw)
+            e = _paired_effect(base, nm, c["metric"], c["sign"])
+            if "delta" in e:
+                null_deltas.append(e["delta"])
+        signed = c["sign"] * np.array(null_deltas)
+        thr = float(np.quantile(signed, 0.95)) if len(signed) else float("nan")
+        results.append({"name": c["name"], "label": c.get("label", c["name"]), "spec": c["spec"], "metric": c["metric"],
+                        "sign": c["sign"], "effects": eff, "null_deltas": null_deltas, "null_q95_signed": thr,
+                        "specific": bool(c["sign"] * eff[c["metric"]].get("delta", np.nan) > thr)})
+    p = [r["effects"][r["metric"]].get("p_one_sided", 1.0) for r in results]
+    for r, padj in zip(results, holm(p) if p else []):
+        e = r["effects"][r["metric"]]
+        r["p_holm"] = float(padj)
+        r["passes_H2"] = bool(padj < 0.05 and r["sign"] * e.get("delta", 0) > 0 and r["specific"])
+    write_result(f"confirm_{name}", {"lock": lock, "candidates": results,
+                                    "H2_supported": any(r["passes_H2"] for r in results)})
