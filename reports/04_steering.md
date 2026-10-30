@@ -53,14 +53,23 @@ state. Setting a single conv3 unit is an exact rank-1 update of the fc pre-activ
 
 ## Confirmatory results (held-out seeds; paired by game seed)
 <!-- BEGIN:steer_appo_1111 -->
+| intervention | primary metric (predicted sign) | baseline → steered | Δ [95% CI] | Holm p | above null 95th pct? | H2 |
+|---|---|---|---|---|---|---|
+| fc neuron 453 zero-ablated | ghosts_per_pill (−) | 0.294 → 0.228 | -0.066 [-0.192, 0.101] | 0.2280 | yes (null q95 0.013) | fail |
+| conv3 channel 18 set to its p99 at cell (5,6) | approach (−) | 0.424 → 0.361 | -0.063 [-0.077, -0.050] | 0.0002 | yes (null q95 0.013) | pass |
+| fc neuron 188 clamped to its p99 (constant logit bias, DLA UP -0.70) (positive control) | action_given_trigger (−) | 0.395 → 0.305 | -0.090 [-0.102, -0.079] | – | – | – |
 <!-- END:steer_appo_1111 -->
 
 Off-target effects, i.e. how much else changes (paired Δ [95% CI]):
 <!-- BEGIN:offtarget_appo_1111 -->
+| intervention | Δ return | Δ deaths / 1k steps | Δ pellets / 1k steps | Δ ghosts per pill |
+|---|---|---|---|---|
+| fc neuron 453 zero-ablated | -1619 [-2194, -1056] | 1.14 [0.75, 1.52] | -9.23 [-17.68, -0.84] | -0.07 [-0.19, 0.10] |
+| conv3 channel 18 set to its p99 at cell (5,6) | -2490 [-2990, -2005] | 4.17 [3.27, 5.14] | -12.16 [-20.78, -3.83] | -0.05 [-0.18, 0.09] |
 <!-- END:offtarget_appo_1111 -->
 
 Secondary mechanistic metric for fc 453: P(UP-ish action | nearest edible ghost is up)
-<!--n:appo_1111:fc453_ablate:sec-->–<!--/n-->.
+<!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n-->.
 
 ![fc453 effect vs null](../figures/steer_appo_1111_fc453_ablate.png)
 ![conv3 ch18 effect vs null](../figures/steer_appo_1111_c3_ch18_cell56.png)

@@ -215,6 +215,11 @@ def generate() -> None:
                             "random directions": (np.array(h1["sets"]["random_dirs"]["r2_all"]),
                                                   np.array(h1["sets"]["random_dirs"]["best_r2"]))},
                            FIGURES_DIR / f"r2_scatter_{name}.png", f"{name}: is each unit explained by one feature?")
+        if (occ := _load(f"occupancy_{name}")) and (frame_f := RESULTS_DIR.parent / "figures" / "maze_frame.npy").exists():
+            for cname, o in occ["candidates"].items():
+                viz.occupancy_maps(np.load(frame_f), np.array(o["baseline"]), np.array(o["steered"]), tuple(o["cell"]),
+                                   FIGURES_DIR / f"occupancy_{name}_{cname}.png",
+                                   f"{name}: where the agent goes, with and without {cname} (held-out, outlined: patched cell)")
         if conf := _load(f"confirm_{name}"):
             blocks[f"steer_{name}"] = steering_table(conf)
             blocks[f"offtarget_{name}"] = offtarget_table(conf)
@@ -243,4 +248,4 @@ def generate() -> None:
             new = inject_inline(new, nums)
             if new != text:
                 path.write_text(new, encoding="utf-8")
-    (RESULTS_DIR / "report_numbers.json").write_text(json.dumps(nums, indent=1, ensure_ascii=False))
+    (RESULTS_DIR / "report_numbers.json").write_text(json.dumps(nums, indent=1, ensure_ascii=False), encoding="utf-8")

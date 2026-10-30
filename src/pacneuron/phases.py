@@ -533,3 +533,52 @@ def derive_candidates(seed: str) -> None:
         "derived_by": "replication_rules in results/candidates.json (no human choice)", "candidates": cands}
     (RESULTS_DIR / f"candidates_{name}.json").write_text(json.dumps(out, indent=1))
     log.info(f"derive_candidates {name}: {[c['label'] for c in cands]}")
+
+
+def publish_hf(seed: str) -> None:
+    """Upload derived artefacts to the HF dataset and update the study's HF collection."""
+    from pacneuron.hf_publish import publish
+    url = publish()
+    write_result("hf_publish", {"collection": url, "dataset": "https://huggingface.co/datasets/BurnyCoder/mspacman-appo-neuron-atlas"})
+    log.info(f"published: {url}")
+
+
+def occupancy(seed: str) -> None:
+    """DESCRIPTIVE figure data: where Ms. Pac-Man spends in-control steps, baseline vs each frozen conv3 candidate.
+
+    Counts player positions on the 14x18 lattice over the candidate's held-out games (paired seeds), normalised to
+    a probability map; writes results/occupancy_<model>.json (maps + per-cell difference) for the figure.
+    """
+    import json
+
+    from pacneuron import maze as M
+    from pacneuron import ram as R
+    from pacneuron.config import RESULTS_DIR
+    from pacneuron.features import in_control
+    name = MODELS[seed].name
+    conf = json.loads((RESULTS_DIR / f"confirm_{name}.json").read_text())
+    out = {}
+    for c in conf["candidates"]:
+        if c["spec"]["site"] != "conv3":
+            continue
+        arm_dir = DATA_DIR / "steer" / name / "heldout" / c["name"]
+        seeds = {g["seed"] for g in data.load_games(arm_dir, ("ram",))}
+        maps = {}
+        for label, d in (("baseline", data.split_dir(name, "heldout")), ("steered", arm_dir)):
+            occ = np.zeros(M.ROWS * M.COLS)
+            for g in data.load_games(d, ("ram",)):
+                if g["seed"] in seeds:
+                    xy = R.player_xy(g["ram"][in_control(g["ram"])])
+                    occ += np.bincount(M.node_of(xy[:, 0], xy[:, 1]), minlength=occ.size)
+            maps[label] = (occ / occ.sum()).reshape(M.ROWS, M.COLS).tolist()
+        out[c["name"]] = {"cell": c["spec"]["cell"], **maps}
+    write_result(f"occupancy_{name}", {"descriptive": True, "candidates": out})
+
+
+def maze_frame(seed: str) -> None:
+    """Render one reference frame (discovery game 0, step 5) by replay; background for maze figures."""
+    from pacneuron.config import FIGURES_DIR
+    from pacneuron.render import capture_frames
+    f = capture_frames(data.split_dir(MODELS[seed].name, "discovery"), [(0, 5)])[(0, 5)]
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    np.save(FIGURES_DIR / "maze_frame.npy", f)

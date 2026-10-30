@@ -27,10 +27,18 @@ rule*, applied to another agent's own discovery data, find a unit whose steering
 | agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (no sticky) |
 |---|---|---|---|---|---|---|---|
 | [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 4082 ± 2032 | 6288 ± 1955 |
+| [appo_2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 5161 ± 2056 | 9056 ± 2544 |
+| [appo_3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 5056 ± 2358 | 6808 ± 1183 |
 <!-- END:models -->
 
 One-job audit (discovery, exploratory):
 <!-- BEGIN:audit_appo_2222 -->
+| unit set (discovery split-half, exploratory) | units | one-job fraction [95% CI] | median R²_all | median best single R² |
+|---|---|---|---|---|
+| trained agent (fc units) | 380 | 1.1% [0.8%, 1.6%] | 0.703 | 0.024 |
+| random directions (control a) | 512 | 0.8% [0.2%, 1.4%] | 0.762 | 0.180 |
+| non-negative unit mixtures (control b) | 512 | 1.2% [1.2%, 1.8%] | 0.756 | 0.043 |
+| untrained network (control c) | 500 | 9.2% [5.0%, 12.0%] | 0.540 | 0.083 |
 <!-- END:audit_appo_2222 -->
 
 Steering (held-out, confirmatory):
@@ -40,6 +48,12 @@ Steering (held-out, confirmatory):
 ### Agent 3333
 One-job audit (discovery, exploratory):
 <!-- BEGIN:audit_appo_3333 -->
+| unit set (discovery split-half, exploratory) | units | one-job fraction [95% CI] | median R²_all | median best single R² |
+|---|---|---|---|---|
+| trained agent (fc units) | 420 | 0.0% [0.0%, 0.5%] | 0.682 | 0.025 |
+| random directions (control a) | 512 | 0.0% [0.0%, 0.0%] | 0.753 | 0.184 |
+| non-negative unit mixtures (control b) | 512 | 0.0% [0.0%, 0.4%] | 0.718 | 0.052 |
+| untrained network (control c) | 501 | 11.6% [7.8%, 13.8%] | 0.526 | 0.093 |
 <!-- END:audit_appo_3333 -->
 
 Steering (held-out, confirmatory):
