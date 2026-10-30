@@ -7,6 +7,7 @@ Global: every phase of the pipeline logs through this so a run can be audited af
 from __future__ import annotations
 
 import logging
+import multiprocessing as mp
 import sys
 from datetime import datetime
 
@@ -19,6 +20,8 @@ _configured = False
 def get_logger(name: str = "pacneuron") -> logging.Logger:
     """Return a logger; the first call attaches a stdout handler and a per-run log file."""
     global _configured
+    if mp.current_process().name != "MainProcess":  # spawned workers re-import modules: no per-worker log files
+        return logging.getLogger(name)
     if not _configured:
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
         # One log file per process start, named by start time so runs never overwrite each other.

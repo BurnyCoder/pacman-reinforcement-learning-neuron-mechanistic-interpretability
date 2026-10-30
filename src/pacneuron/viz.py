@@ -53,7 +53,7 @@ def clean_fraction_bars(summary: dict, path: Path, title: str) -> None:
     ax.barh(y, vals, color=colors, height=0.55)
     for yi, (lo, hi) in zip(y, errs):
         ax.plot([lo, hi], [yi, yi], color=INK, lw=1)
-    for yi, v, (lo, hi) in zip(y, vals, errs):
+    for yi, v, (_lo, hi) in zip(y, vals, errs):
         ax.text(max(v, hi) + 0.003, yi, f"{100 * v:.1f}%", va="center", fontsize=8, color=INK2)
     ax.set_yticks(y, [lbl for _, lbl in order])
     ax.set_xlabel("fraction of units with one main job (R²_all ≥ 0.3, best single feature ≥ 70% of it)")
@@ -74,7 +74,7 @@ def r2_scatter(sets: dict[str, tuple[np.ndarray, np.ndarray]], path: Path, title
     xs = np.linspace(0.3, 1, 10)
     ax.plot(xs, 0.7 * xs, color=INK2, lw=1)
     ax.axvline(0.3, color=INK2, lw=1)
-    ax.text(0.62, 0.33, "clean region:\nabove line, right of 0.3", fontsize=7.5, color=INK2)
+    ax.text(0.33, 0.62, "one-job region:\nabove the line and\nright of R²_all = 0.3", fontsize=7.5, color=INK2)
     ax.set_xlabel("R²_all  (all 40 features, gradient boosting)")
     ax.set_ylabel("best single-feature R²")
     ax.set_xlim(-0.05, 1)
@@ -92,7 +92,7 @@ def effect_vs_null(cands: list[dict], path: Path, title: str, xlabel: str) -> No
         y = len(cands) - 1 - k
         null = np.asarray(c.get("null", []), float)
         if len(null):
-            jitter = np.random.default_rng(k).uniform(-0.15, 0.15, len(null))
+            jitter = np.random.default_rng(k).uniform(-0.12, 0.12, len(null))
             ax.scatter(null, y + jitter, s=10, color=MUTED, alpha=0.6, label="null units" if k == 0 else None)
         lo, hi = c["ci"]
         ax.plot([lo, hi], [y, y], color=SERIES[0], lw=2)
@@ -102,37 +102,10 @@ def effect_vs_null(cands: list[dict], path: Path, title: str, xlabel: str) -> No
     ax.set_yticks(range(len(cands))[::-1], [c["label"] for c in cands])
     ax.set_xlabel(xlabel)
     ax.grid(axis="y", visible=False)
-    ax.legend(loc="lower right", fontsize=8)
+    ax.set_ylim(-0.6, len(cands) - 0.4)
+    ax.legend(loc="upper left", fontsize=8, frameon=True, facecolor=SURF, edgecolor=GRID)
     ax.set_title(title, loc="left")
     save(fig, path)
-
-
-def heat_on_frame(frame: np.ndarray, values: np.ndarray, path: Path, title: str, vmax: float | None = None,
-                  label: str = "") -> None:
-    """Overlay a 7x7 conv3-cell map (diverging, 0 = gray) on an RGB frame (cell (i,j) -> its RF core on screen)."""
-    style()
-    fig, ax = plt.subplots(figsize=(3.6, 4.2))
-    ax.imshow(frame[:172], extent=(0, 160, 172, 0))
-    vmax = vmax or float(np.abs(values).max()) or 1.0
-    for i in range(7):
-        for j in range(7):
-            x0, x1 = (8 * j + 10) * 160 / 84, (8 * j + 26) * 160 / 84
-            y0, y1 = (8 * i + 10) * 210 / 84, (8 * i + 26) * 210 / 84
-            col = DIVERGING(0.5 + 0.5 * values[i, j] / vmax)
-            ax.add_patch(plt.Rectangle((x0, y0), x1 - x0, y1 - y0, color=col, alpha=0.75, lw=0))
-    ax.set_xlim(0, 160)
-    ax.set_ylim(172, 0)
-    ax.axis("off")
-    sm = plt.cm.ScalarMappable(cmap=DIVERGING, norm=plt.Normalize(-vmax, vmax))
-    fig.colorbar(sm, ax=ax, fraction=0.04, pad=0.02, label=label)
-    ax.set_title(title, loc="left")
-    save(fig, path)
-
-
-def frame_grid(frames: list[np.ndarray], path: Path, cols: int = 4) -> None:
-    from pacneuron.render import grid
-    path.parent.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(grid(frames, cols=cols)).save(path)
 
 
 def side_by_side_video(left: list[np.ndarray], right: list[np.ndarray], path: Path, labels=("baseline", "steered"),
@@ -156,5 +129,34 @@ def side_by_side_video(left: list[np.ndarray], right: list[np.ndarray], path: Pa
         frames.append(np.concatenate([panels[0], gap, panels[1]], 1))
     path.parent.mkdir(parents=True, exist_ok=True)
     imageio.mimsave(path.with_suffix(".mp4"), frames, fps=fps, macro_block_size=1)
-    small = [np.asarray(Image.fromarray(f).resize((f.shape[1] // 2, f.shape[0] // 2))) for f in frames[::2]]
-    imageio.mimsave(path.with_suffix(".gif"), small, duration=2 / fps, loop=0)
+    imageio.mimsave(path.with_suffix(".gif"), frames[::3], duration=3 / fps, loop=0)  # full size, every 3rd frame
+
+
+def occupancy_maps(frame: np.ndarray, base: np.ndarray, steered: np.ndarray, cell: tuple, path: Path, title: str) -> None:
+    """Three panels on the maze: baseline occupancy, steered occupancy (sequential blue), and their difference
+    (diverging, 0 = gray), each lattice node drawn as a dot sized/coloured by its share of in-control steps."""
+    from pacneuron.maze import COLS, PELLET_X, ROWS
+    style()
+    xs = np.tile(PELLET_X + 2, ROWS)
+    ys = np.repeat(7 + 12 * np.arange(ROWS) + 1, COLS)
+    fig, axes = plt.subplots(1, 3, figsize=(11, 4.4), constrained_layout=True)
+    diff = steered - base
+    vmax = float(max(base.max(), steered.max()))
+    dmax = float(np.abs(diff).max()) or 1.0
+    i, j = cell
+    box = ((8 * j + 10) * 160 / 84, (8 * i + 10) * 210 / 84, (8 * j + 26) * 160 / 84, (8 * i + 26) * 210 / 84)
+    for ax, vals, cmap, lo, hi, ttl in ((axes[0], base, SEQUENTIAL, 0, vmax, "baseline"),
+                                        (axes[1], steered, SEQUENTIAL, 0, vmax, "steered"),
+                                        (axes[2], diff, DIVERGING, -dmax, dmax, "steered − baseline")):
+        ax.imshow(frame[:172], extent=(0, 160, 172, 0), alpha=0.35)
+        sc = ax.scatter(xs, ys, c=vals.ravel(), cmap=cmap, vmin=lo, vmax=hi, s=28, edgecolors="none")
+        ax.add_patch(plt.Rectangle((box[0], box[1]), box[2] - box[0], box[3] - box[1], fill=False, ec=INK, lw=1.5))
+        ax.set_xlim(0, 160)
+        ax.set_ylim(172, 0)
+        ax.axis("off")
+        ax.set_title(ttl, loc="left")
+        cb = fig.colorbar(sc, ax=ax, fraction=0.046, pad=0.02)
+        cb.ax.tick_params(labelsize=7)
+    fig.suptitle(title + "\ncolour = share of in-control steps at each maze node", x=0.01, ha="left",
+                 fontweight="bold", fontsize=9)
+    save(fig, path)

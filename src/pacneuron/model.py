@@ -19,7 +19,7 @@ Sources (Sample Factory, MIT):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 from torch import nn
@@ -96,9 +96,6 @@ class SFActorCritic(nn.Module):
         return {"conv1": c1, "conv2": c2, "conv3": c3, "fc_pre": h_pre, "fc": h,
                 "logits": self.policy(h), "value": self.critic(h).squeeze(-1)}
 
-    def denormalize_value(self, v: torch.Tensor) -> torch.Tensor:
-        """Map normalised critic output back to (clipped-reward) return units: v*std + mean."""
-        return v * torch.sqrt(self.ret_var.float() + NORM_EPS) + self.ret_mean.float()
 
 
 def load_sf_checkpoint(path, device: str = "cpu") -> SFActorCritic:

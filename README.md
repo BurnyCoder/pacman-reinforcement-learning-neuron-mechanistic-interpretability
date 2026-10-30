@@ -25,28 +25,60 @@ questions. Which exact game fact does it track? What happens when we steer it du
   [preregistered](reports/preregistration.md) before any data, and the steering candidates were
   [frozen](reports/preregistration_addendum.md) before any held-out game.
 
-**Highlights (agent 1111)**
-- **Negative result for "already clean".**
-  - Fraction of alive fc neurons with one main job, on held-out games:
-    - agent <!--n:appo_1111:h1_agent-->0.8%<!--/n-->
-    - random directions <!--n:appo_1111:h1_random_dirs-->0.2%<!--/n-->
-    - untrained network <!--n:appo_1111:h1_untrained-->9.4%<!--/n-->
-  - H1 is <!--n:appo_1111:h1_verdict-->supported<!--/n-->.
-  - Neurons are explained by *combinations* of game facts. Exploratory: where Ms. Pac-Man is × which way she
-    faces gives a median R² of <!--n:appo_1111:place_heading_median-->0.20<!--/n--> per neuron, vs
-    <!--n:appo_1111:median_best_disc-->0.03<!--/n--> for the best single feature.
-- **Steering (confirmatory, held-out games).**
-  - fc neuron 453 zero-ablated: ghosts eaten per power pill
-    <!--n:appo_1111:fc453_ablate:base-->–<!--/n--> → <!--n:appo_1111:fc453_ablate:arm-->–<!--/n-->
-    (<!--n:appo_1111:fc453_ablate:pass-->pending<!--/n--> the preregistered test).
-  - conv3 channel 18 set at one 7×7 cell: rate of approaching that maze location
-    <!--n:appo_1111:c3_ch18_cell56:base-->–<!--/n--> → <!--n:appo_1111:c3_ch18_cell56:arm-->–<!--/n-->
-    (<!--n:appo_1111:c3_ch18_cell56:pass-->pending<!--/n-->).
-  - Details, nulls and off-target damage are in [reports/04_steering.md](reports/04_steering.md).
-- **Interactive microscope.** Every neuron with its frames, label and action votes:
-  https://burnycoder.github.io/pacman-reinforcement-learning-neuron-mechanistic-interpretability/
+**Highlights**
 
-![steering video: baseline (left) vs fc neuron 453 ablated (right)](figures/video_appo_1111_fc453_ablate.gif)
+**Steering: one neuron creates a "no-go zone"** (agent 1111, confirmatory, held-out games).
+- **Intervention.** Setting a *single* conv3 unit (channel 18 at one 7×7 position) to its 99th-percentile
+  activation.
+- **Effect.** The agent stops approaching that part of the maze. Approach rate
+  <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> → <!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->,
+  Holm p <!--n:appo_1111:c3_ch18_cell56:p-->0.0002<!--/n-->.
+- **Specific.** It is stronger than every one of the
+  <!--n:appo_1111:c3_ch18_cell56:null_n-->63<!--/n--> other channels set at the same position. The preregistered
+  steering hypothesis (H2) is therefore **supported**.
+- **Side effects.** The agent leaves that area's pellets and dies more often.
+
+![no-go zone: baseline (left) vs conv3 channel 18 patched at the outlined cell (right)](figures/video_appo_1111_c3_ch18_cell56.gif)
+
+**A neuron for "chase the edible ghost upward"** (agent 1111).
+- **Mechanism.** Zero-ablating fc neuron 453 cuts "move up when the nearest edible ghost is up" from
+  <!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n-->.
+- **Preregistered outcome.** Ghosts eaten per power pill drops only
+  <!--n:appo_1111:fc453_ablate:base-->0.294<!--/n--> → <!--n:appo_1111:fc453_ablate:arm-->0.228<!--/n-->. That is
+  not significant, so this candidate **fails** H2. It is nonetheless the largest effect among 99 random fc
+  ablations.
+
+**"Already clean"? Not for this agent** (negative result).
+- Fraction of alive fc neurons with one main job on held-out games, agent 1111:
+  - agent <!--n:appo_1111:h1_agent-->0.8%<!--/n-->
+  - random directions <!--n:appo_1111:h1_random_dirs-->0.2%<!--/n-->
+  - untrained network <!--n:appo_1111:h1_untrained-->9.4%<!--/n-->
+- The preregistered difference test is technically <!--n:appo_1111:h1_verdict-->supported<!--/n--> for agent
+  1111 but trivially small. For agents 2222 and 3333 it is <!--n:appo_2222:h1_verdict-->not supported<!--/n--> and
+  <!--n:appo_3333:h1_verdict-->not supported<!--/n-->.
+- Neurons are instead explained by *combinations* of game facts. Exploratory: where Ms. Pac-Man is × which way
+  she faces gives a median R² of <!--n:appo_1111:place_heading_median-->0.20<!--/n--> per neuron, vs
+  <!--n:appo_1111:median_best_disc-->0.03<!--/n--> for the best single feature. They behave like
+  place × heading cells.
+
+**Replication (H3).** Frozen selection rules were applied to independently trained agents 2222 and 3333:
+- no-go-zone rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n-->;
+- ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n-->.
+
+See [reports/05_replication.md](reports/05_replication.md).
+
+![agent 3333: no-go zone from conv3 channel 46](figures/video_appo_3333_c3_ch46_cell56.gif)
+
+**Interactive microscope.** Every neuron with its frames, label and action votes:
+https://burnycoder.github.io/pacman-reinforcement-learning-neuron-mechanistic-interpretability/
+
+**Paper:** [paper/paper.pdf](paper/paper.pdf).
+
+**Hugging Face:**
+- collection: <!--n:hf_collection-->https://huggingface.co/collections/BurnyCoder/ms-pac-man-rl-neuron-interpretability-6ae446b6c52e7e6af4d1bd8d<!--/n-->
+- dataset with all results and unit atlases: <!--n:hf_dataset-->https://huggingface.co/datasets/BurnyCoder/mspacman-appo-neuron-atlas<!--/n-->
+
+![where the agent goes with and without the patch](figures/occupancy_appo_1111_c3_ch18_cell56.png)
 
 ## Results
 
@@ -55,6 +87,8 @@ questions. Which exact game fact does it track? What happens when we steer it du
 | agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (no sticky) |
 |---|---|---|---|---|---|---|---|
 | [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 4082 ± 2032 | 6288 ± 1955 |
+| [appo_2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 5161 ± 2056 | 9056 ± 2544 |
+| [appo_3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 5056 ± 2358 | 6808 ± 1183 |
 <!-- END:models -->
 
 ### Is each neuron "one job"? (H1; held-out games; method vs controls)
@@ -73,10 +107,19 @@ H1 test (agent minus random directions): 0.6% [0.2%, 0.6%]; H1 supported.
 
 ### Steering (H2; held-out games; candidates vs matched null units; positive control)
 <!-- BEGIN:steer_appo_1111 -->
+| intervention | primary metric (predicted sign) | baseline → steered | Δ [95% CI] | Holm p | above null 95th pct? | H2 |
+|---|---|---|---|---|---|---|
+| fc neuron 453 zero-ablated | ghosts_per_pill (−) | 0.294 → 0.228 | -0.066 [-0.192, 0.101] | 0.2280 | yes (null q95 0.013) | fail |
+| conv3 channel 18 set to its p99 at cell (5,6) | approach (−) | 0.424 → 0.361 | -0.063 [-0.077, -0.050] | 0.0002 | yes (null q95 0.013) | pass |
+| fc neuron 188 clamped to its p99 (constant logit bias, DLA UP -0.70) (positive control) | action_given_trigger (−) | 0.395 → 0.305 | -0.090 [-0.102, -0.079] | – | – | – |
 <!-- END:steer_appo_1111 -->
 
 Off-target effects (ablation and steering damage):
 <!-- BEGIN:offtarget_appo_1111 -->
+| intervention | Δ return | Δ deaths / 1k steps | Δ pellets / 1k steps | Δ ghosts per pill |
+|---|---|---|---|---|
+| fc neuron 453 zero-ablated | -1619 [-2194, -1056] | 1.14 [0.75, 1.52] | -9.23 [-17.68, -0.84] | -0.07 [-0.19, 0.10] |
+| conv3 channel 18 set to its p99 at cell (5,6) | -2490 [-2990, -2005] | 4.17 [3.27, 5.14] | -12.16 [-20.78, -3.83] | -0.05 [-0.18, 0.09] |
 <!-- END:offtarget_appo_1111 -->
 
 ![fc453 vs null](figures/steer_appo_1111_fc453_ablate.png)

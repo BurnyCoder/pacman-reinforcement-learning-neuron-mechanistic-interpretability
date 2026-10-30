@@ -12,14 +12,18 @@ Author: Libor "Burny" Burian. Every number below is regenerated from `results/*.
   does the agent behave differently in the predicted way?
 - **Labels.** Most neurons do not track one game fact. They respond to combinations: mostly *where Ms. Pac-Man is
   and which way she is heading*.
-- **Steering.** A few units do change behaviour when steered. The confirmatory, held-out results are in the table
-  below.
+- **Steering.** A few units do change behaviour when steered. Setting a single unit in the last convolutional
+  layer makes the agent avoid one region of the maze, like a phantom "no-go zone". This held up in all three
+  agents, against 63 random units each, on games not used to choose the unit. Turning off a "chase the edible
+  ghost upward" unit stops exactly that behaviour, but does not consistently change how many ghosts get eaten.
 
 ## Models
 <!-- BEGIN:models -->
 | agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (no sticky) |
 |---|---|---|---|---|---|---|---|
 | [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 4082 ± 2032 | 6288 ± 1955 |
+| [appo_2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 5161 ± 2056 | 9056 ± 2544 |
+| [appo_3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 5056 ± 2358 | 6808 ± 1183 |
 <!-- END:models -->
 
 All three are public checkpoints by Edward Beeching on Hugging Face. They were trained with Sample Factory 2.0
@@ -32,7 +36,7 @@ learning was involved.
 | 1 | Fidelity gate: our PyTorch/Windows rebuild vs real Sample Factory | passed | [01_fidelity.md](01_fidelity.md) |
 | 2 | RAM ground truth (incl. newly found frightened-mode addresses) | validated | [02_ram_ground_truth.md](02_ram_ground_truth.md) |
 | 3 | Neuron audit, one-job fraction vs controls (H1) | H1 <!--n:appo_1111:h1_verdict-->supported<!--/n--> | [03_neuron_audit.md](03_neuron_audit.md) |
-| 4 | Steering, frozen candidates vs matched nulls (H2) | H2 <!--n:appo_1111:h2_verdict-->pending<!--/n--> | [04_steering.md](04_steering.md) |
+| 4 | Steering, frozen candidates vs matched nulls (H2) | H2 <!--n:appo_1111:h2_verdict-->supported<!--/n--> | [04_steering.md](04_steering.md) |
 | 5 | Replication on agents 2222 and 3333 (H3) | see report | [05_replication.md](05_replication.md) |
 
 Preregistration: [preregistration.md](preregistration.md) (before any data) and
@@ -52,7 +56,18 @@ fc unit; <!--n:appo_1111:place_heading_frac-->30.5%<!--/n--> of units exceed 0.3
 
 **H2, steering on held-out games (paired by seed):**
 <!-- BEGIN:steer_appo_1111 -->
+| intervention | primary metric (predicted sign) | baseline → steered | Δ [95% CI] | Holm p | above null 95th pct? | H2 |
+|---|---|---|---|---|---|---|
+| fc neuron 453 zero-ablated | ghosts_per_pill (−) | 0.294 → 0.228 | -0.066 [-0.192, 0.101] | 0.2280 | yes (null q95 0.013) | fail |
+| conv3 channel 18 set to its p99 at cell (5,6) | approach (−) | 0.424 → 0.361 | -0.063 [-0.077, -0.050] | 0.0002 | yes (null q95 0.013) | pass |
+| fc neuron 188 clamped to its p99 (constant logit bias, DLA UP -0.70) (positive control) | action_given_trigger (−) | 0.395 → 0.305 | -0.090 [-0.102, -0.079] | – | – | – |
 <!-- END:steer_appo_1111 -->
+
+**H3, replication on agents 2222 and 3333** (frozen selection rules):
+- no-go-zone rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n-->;
+- ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n-->.
+
+Details are in [05_replication.md](05_replication.md).
 
 ## Deviations from the preregistration
 1. **Stochasticity check.**

@@ -56,7 +56,6 @@ def run_arms(model, arms: list[tuple[Path, dict, list[int]]], desc: str) -> None
     jobs = [(d, spec, s) for d, spec, seeds in arms for s in seeds]
     arm_of = np.array([next(i for i, a in enumerate(arms) if a[0] == d) for d, _, _ in jobs])
     makers = [edit_factory(spec) for _, spec, _ in arms]
-    banks: dict[int, object] = {}
 
     def make(rams, steps, ks):
         edits = []

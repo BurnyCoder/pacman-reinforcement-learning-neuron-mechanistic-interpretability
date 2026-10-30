@@ -14,7 +14,7 @@ from scipy.stats import rankdata
 from pacneuron import audit as AU
 from pacneuron import data
 from pacneuron.config import DATA_DIR, MODELS
-from pacneuron.features import CELL_TYPES, FAMILY, cell_objects
+from pacneuron.features import FAMILY, cell_objects
 from pacneuron.logs import get_logger
 from pacneuron.pipeline import _model, write_result
 from pacneuron.stats import bootstrap_weights
@@ -325,7 +325,7 @@ def confirm(seed: str) -> None:
         eff = {mt: _paired_effect(base, arm, mt, c["sign"] if mt == c["metric"] else 1)
                for mt in [c["metric"], "return", "deaths_per_1k", "pellets_per_1k", "ghosts_per_pill"]}
         null_deltas = []
-        for k, ns in enumerate(c["null_specs"]):
+        for k in range(len(c["null_specs"])):
             nd = root / f"null_{c['null_group']}_{k:03d}"
             nm = steer.arm_metrics(nd, **kw)
             e = _paired_effect(base, nm, c["metric"], c["sign"])
@@ -503,7 +503,6 @@ def derive_candidates(seed: str) -> None:
     import json
 
     from pacneuron.config import RESULTS_DIR
-    from pacneuron.features import FAMILY  # noqa: F401  (documents that labels come from the same feature set)
     name = MODELS[seed].name
     frozen = json.loads((RESULTS_DIR / "candidates.json").read_text())
     audit_res = json.loads((RESULTS_DIR / f"audit_{name}.json").read_text())
@@ -533,3 +532,75 @@ def derive_candidates(seed: str) -> None:
         "derived_by": "replication_rules in results/candidates.json (no human choice)", "candidates": cands}
     (RESULTS_DIR / f"candidates_{name}.json").write_text(json.dumps(out, indent=1))
     log.info(f"derive_candidates {name}: {[c['label'] for c in cands]}")
+
+
+def publish_hf(seed: str) -> None:
+    """Upload derived artefacts to the HF dataset and update the study's HF collection."""
+    from pacneuron.hf_publish import publish
+    url = publish()
+    write_result("hf_publish", {"collection": url, "dataset": "https://huggingface.co/datasets/BurnyCoder/mspacman-appo-neuron-atlas"})
+    log.info(f"published: {url}")
+
+
+def occupancy(seed: str) -> None:
+    """DESCRIPTIVE figure data: where Ms. Pac-Man spends in-control steps, baseline vs each frozen conv3 candidate.
+
+    Counts player positions on the 14x18 lattice over the candidate's held-out games (paired seeds), normalised to
+    a probability map; writes results/occupancy_<model>.json (maps + per-cell difference) for the figure.
+    """
+    import json
+
+    from pacneuron import maze as M
+    from pacneuron import ram as R
+    from pacneuron.config import RESULTS_DIR
+    from pacneuron.features import in_control
+    name = MODELS[seed].name
+    conf = json.loads((RESULTS_DIR / f"confirm_{name}.json").read_text())
+    out = {}
+    for c in conf["candidates"]:
+        if c["spec"]["site"] != "conv3":
+            continue
+        arm_dir = DATA_DIR / "steer" / name / "heldout" / c["name"]
+        seeds = {g["seed"] for g in data.load_games(arm_dir, ("ram",))}
+        maps = {}
+        for label, d in (("baseline", data.split_dir(name, "heldout")), ("steered", arm_dir)):
+            occ = np.zeros(M.ROWS * M.COLS)
+            for g in data.load_games(d, ("ram",)):
+                if g["seed"] in seeds:
+                    xy = R.player_xy(g["ram"][in_control(g["ram"])])
+                    occ += np.bincount(M.node_of(xy[:, 0], xy[:, 1]), minlength=occ.size)
+            maps[label] = (occ / occ.sum()).reshape(M.ROWS, M.COLS).tolist()
+        out[c["name"]] = {"cell": c["spec"]["cell"], **maps}
+    write_result(f"occupancy_{name}", {"descriptive": True, "candidates": out})
+
+
+def maze_frame(seed: str) -> None:
+    """Render one reference frame (discovery game 0, step 5) by replay; background for maze figures."""
+    from pacneuron.config import FIGURES_DIR
+    from pacneuron.render import capture_frames
+    f = capture_frames(data.split_dir(MODELS[seed].name, "discovery"), [(0, 5)])[(0, 5)]
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    np.save(FIGURES_DIR / "maze_frame.npy", f)
+
+
+def dose_screen(seed: str) -> None:
+    """EXPLORATORY dose-response of the open-loop conv3 patch screen: per-cell p99, channel max, 2 x channel max."""
+    import json
+
+    from pacneuron import screen as SC
+    from pacneuron.config import RESULTS_DIR
+    name = MODELS[seed].name
+    d = data.split_dir(name, "discovery")
+    S = data.load_split(d, acts=("fc_pre", "conv3"))
+    mazes = data.load_bank(d).mazes
+    au = json.loads((RESULTS_DIR / f"audit_{name}.json").read_text())
+    p99 = np.array([c["p99_cell"] for c in au["conv3_channels"]], np.float32)
+    mx = np.broadcast_to(np.array([c["max"] for c in au["conv3_channels"]], np.float32)[:, None, None], p99.shape)
+    model = _model(seed)
+    out = {}
+    for label, doses in (("p99", p99), ("max", mx.copy()), ("2x_max", 2 * mx)):
+        att = SC.patch_screen(model, S, mazes, doses)["attraction_junction"]
+        i = int(np.argmin(att))
+        out[label] = {"strongest_repel": float(att.ravel()[i]), "channel": i // 49, "cell": [i % 49 // 7, i % 7],
+                      "strongest_attract": float(att.max()), "mean_abs": float(np.abs(att).mean())}
+    write_result(f"dose_screen_{name}", {"exploratory": True, "doses": out})

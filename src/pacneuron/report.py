@@ -102,7 +102,7 @@ def offtarget_table(conf: dict) -> str:
     rows = ["| intervention | Δ return | Δ deaths / 1k steps | Δ pellets / 1k steps | Δ ghosts per pill |", "|---|---|---|---|---|"]
     for r in conf["candidates"]:
         e = r["effects"]
-        cell = lambda k, d=2: f"{_f(e[k].get('delta'), d)} [{_f(e[k].get('ci', [None])[0], d)}, {_f(e[k].get('ci', [None, None])[1], d)}]"
+        cell = lambda k, d=2, e=e: f"{_f(e[k].get('delta'), d)} [{_f(e[k].get('ci', [None])[0], d)}, {_f(e[k].get('ci', [None, None])[1], d)}]"
         rows.append(f"| {r['label']} | {cell('return', 0)} | {cell('deaths_per_1k')} | {cell('pellets_per_1k')} | {cell('ghosts_per_pill')} |")
     return "\n".join(rows)
 
@@ -156,6 +156,8 @@ def screen_table(r: dict) -> str:
 def generate() -> None:
     blocks: dict[str, str] = {"models": models_table()}
     nums: dict[str, str] = {}
+    if hf := _load("hf_publish"):
+        nums["hf_collection"], nums["hf_dataset"] = hf["collection"], hf["dataset"]
     if fid := _load("fidelity"):
         blocks["fidelity"] = fidelity_table(fid)
         nums["fid_logit"] = f"{fid['max_abs_logit_diff']:.1e}"
@@ -177,6 +179,13 @@ def generate() -> None:
                 nums[f"{name}:c3_ch20_{f}"] = f"{au[20]:.2f}"
         if pl := _load(f"pilot_{name}"):
             blocks[f"pilot_{name}"] = pilot_table(pl)
+            for c in pl["candidates"]:
+                for mt, e in c["effects"].items():
+                    if "delta" in e:
+                        nums[f"{name}:pilot:{c['name']}:{mt}"] = f"{_f(e['base_mean'])} → {_f(e['arm_mean'])} (Δ {_f(e['delta'])} [{_f(e['ci'][0])}, {_f(e['ci'][1])}])"
+        if ds := _load(f"dose_screen_{name}"):
+            for lab, v in ds["doses"].items():
+                nums[f"{name}:dose:{lab}"] = f"{100 * v['strongest_repel']:+.1f} pp"
         if sc := _load(f"screen_{name}"):
             blocks[f"screen_{name}"] = screen_table(sc)
         st, st0 = _load(f"stochasticity_{name}"), _load(f"stochasticity_{name}_nosticky")
@@ -215,6 +224,11 @@ def generate() -> None:
                             "random directions": (np.array(h1["sets"]["random_dirs"]["r2_all"]),
                                                   np.array(h1["sets"]["random_dirs"]["best_r2"]))},
                            FIGURES_DIR / f"r2_scatter_{name}.png", f"{name}: is each unit explained by one feature?")
+        if (occ := _load(f"occupancy_{name}")) and (frame_f := RESULTS_DIR.parent / "figures" / "maze_frame.npy").exists():
+            for cname, o in occ["candidates"].items():
+                viz.occupancy_maps(np.load(frame_f), np.array(o["baseline"]), np.array(o["steered"]), tuple(o["cell"]),
+                                   FIGURES_DIR / f"occupancy_{name}_{cname}.png",
+                                   f"{name}: where the agent goes, with and without {cname} (held-out, outlined: patched cell)")
         if conf := _load(f"confirm_{name}"):
             blocks[f"steer_{name}"] = steering_table(conf)
             blocks[f"offtarget_{name}"] = offtarget_table(conf)
@@ -228,12 +242,47 @@ def generate() -> None:
                 nums[f"{key}:delta"] = f"{_f(e['delta'])} [{_f(e['ci'][0])}, {_f(e['ci'][1])}]"
                 nums[f"{key}:p"] = _f(r.get("p_holm"), 4)
                 nums[f"{key}:pass"] = "passes" if r.get("passes_H2") else "fails"
+                nd = np.array(r["null_deltas"], float)
+                if len(nd):
+                    nums[f"{key}:null_mean"] = _f(float(nd.mean()))
+                    nums[f"{key}:null_n"] = str(len(nd))
+                    nums[f"{key}:null_ge"] = str(int((r["sign"] * nd >= r["sign"] * e["delta"]).sum()))
+                for k2 in ("return", "deaths_per_1k", "pellets_per_1k"):
+                    x = r["effects"][k2]
+                    if "delta" in x:
+                        nums[f"{key}:{k2}"] = f"{_f(x['delta'], 1 if k2 != 'return' else 0)} [{_f(x['ci'][0], 1 if k2 != 'return' else 0)}, {_f(x['ci'][1], 1 if k2 != 'return' else 0)}]"
                 if r.get("secondary") and "delta" in r["secondary"]:
                     s2 = r["secondary"]
                     nums[f"{key}:sec"] = f"{_f(s2['base_mean'])} → {_f(s2['arm_mean'])} (Δ {_f(s2['delta'])} [{_f(s2['ci'][0])}, {_f(s2['ci'][1])}])"
                 viz.effect_vs_null([{"label": r["label"], "delta": e["delta"], "ci": e["ci"], "null": r["null_deltas"]}],
                                    FIGURES_DIR / f"steer_{name}_{r['name']}.png", f"{name}: {r['label']}",
                                    f"Δ {r['metric']} (steered − baseline, paired by game seed)")
+    # H3 (preregistration §7): a frozen rule replicates if the rule-selected unit passes criteria 1-2 in BOTH
+    # replication agents; within-agent Holm p-values are additionally Holm-corrected over the two agents.
+    from pacneuron.stats import holm
+    rules = {"fc453_ablate": "zero-ablate the fc unit most needed for approaching edible ghosts",
+             "c3_ch18_cell56": "set the most repelling conv3 (channel, cell) to its p99"}
+    rows = ["| rule (frozen on agent 1111) | agent | selected unit | primary metric Δ [95% CI] | Holm p (within agent) | "
+            "null units at least as strong | passes |", "|---|---|---|---|---|---|---|"]
+    verdict = {}
+    for rule, desc in rules.items():
+        ps, ok = [], []
+        for a in ("appo_2222", "appo_3333"):
+            conf = _load(f"confirm_{a}")
+            if not conf:
+                continue
+            r = next(c for c, cf in zip(conf["candidates"], _load(f"candidates_{a}")["candidates"]) if cf.get("rule") == rule)
+            e = r["effects"][r["metric"]]
+            nd = np.array(r["null_deltas"], float)
+            ps.append(r["p_holm"])
+            ok.append(bool(r["passes_H2"]))
+            rows.append(f"| {desc} | {a} | {r['label']} | {_f(e['delta'])} [{_f(e['ci'][0])}, {_f(e['ci'][1])}] | "
+                        f"{_f(r['p_holm'], 4)} | {int((r['sign'] * nd >= r['sign'] * e['delta']).sum())} of {len(nd)} | "
+                        f"{'yes' if r['passes_H2'] else 'no'} |")
+        if len(ok) == 2:
+            verdict[rule] = all(ok) and bool((holm(ps) < 0.05).all())
+            nums[f"h3:{rule}"] = "replicates" if verdict[rule] else "does not replicate"
+    blocks["h3"] = "\n".join(rows)
     for path in _targets():
         if path.exists():
             text = path.read_text(encoding="utf-8")
@@ -243,4 +292,4 @@ def generate() -> None:
             new = inject_inline(new, nums)
             if new != text:
                 path.write_text(new, encoding="utf-8")
-    (RESULTS_DIR / "report_numbers.json").write_text(json.dumps(nums, indent=1, ensure_ascii=False))
+    (RESULTS_DIR / "report_numbers.json").write_text(json.dumps(nums, indent=1, ensure_ascii=False), encoding="utf-8")

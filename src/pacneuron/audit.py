@@ -39,7 +39,7 @@ class BinModel:
     discrete: dict[str, bool]
 
     @classmethod
-    def fit(cls, feats: dict[str, np.ndarray]) -> "BinModel":
+    def fit(cls, feats: dict[str, np.ndarray]) -> BinModel:
         edges, discrete = {}, {}
         for k, v in feats.items():
             u = np.unique(v)

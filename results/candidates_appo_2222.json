@@ -1,0 +1,1452 @@
+{
+ "n_baseline": 100,
+ "n_candidate": 50,
+ "n_null": 20,
+ "derived_by": "replication_rules in results/candidates.json (no human choice)",
+ "candidates": [
+  {
+   "name": "fc379_ablate",
+   "rule": "fc453_ablate",
+   "label": "fc neuron 379 zero-ablated",
+   "model": "appo_2222",
+   "spec": {
+    "site": "fc",
+    "units": [
+     379
+    ],
+    "value": 0.0
+   },
+   "metric": "ghosts_per_pill",
+   "sign": -1,
+   "secondary_metric": {
+    "metric": "action_given_trigger",
+    "sign": -1,
+    "metric_kwargs": {
+     "trigger": "dir_edible_up",
+     "action_set": [
+      1,
+      5,
+      6
+     ]
+    }
+   },
+   "null_group": "fc_ablate",
+   "null_specs": [
+    {
+     "site": "fc",
+     "units": [
+      0
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      1
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      2
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      7
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      10
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      16
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      17
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      18
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      30
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      33
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      37
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      38
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      39
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      43
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      55
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      63
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      72
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      76
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      107
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      116
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      117
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      120
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      128
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      133
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      136
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      154
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      167
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      171
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      172
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      176
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      179
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      180
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      183
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      185
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      188
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      190
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      199
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      201
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      206
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      209
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      214
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      225
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      230
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      233
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      234
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      245
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      248
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      253
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      255
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      258
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      259
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      261
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      274
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      277
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      282
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      290
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      293
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      295
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      296
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      299
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      304
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      312
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      315
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      319
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      320
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      324
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      326
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      327
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      331
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      337
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      338
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      343
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      350
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      352
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      357
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      358
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      361
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      363
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      378
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      390
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      400
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      411
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      429
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      436
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      440
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      446
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      448
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      449
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      450
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      451
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      453
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      454
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      462
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      463
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      479
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      494
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      498
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      500
+     ],
+     "value": 0.0
+    },
+    {
+     "site": "fc",
+     "units": [
+      506
+     ],
+     "value": 0.0
+    }
+   ]
+  },
+  {
+   "name": "c3_ch3_cell00",
+   "rule": "c3_ch18_cell56",
+   "label": "conv3 channel 3 set to its p99 at cell (0, 0)",
+   "model": "appo_2222",
+   "spec": {
+    "site": "conv3",
+    "units": [
+     3
+    ],
+    "cell": [
+     0,
+     0
+    ],
+    "value": 39.3125
+   },
+   "metric": "approach",
+   "sign": -1,
+   "metric_kwargs": {
+    "target_cell": [
+     0,
+     0
+    ]
+   },
+   "null_group": "c3_cell00",
+   "null_specs": [
+    {
+     "site": "conv3",
+     "units": [
+      0
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 28.125
+    },
+    {
+     "site": "conv3",
+     "units": [
+      1
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 17.921899795532227
+    },
+    {
+     "site": "conv3",
+     "units": [
+      2
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 10.837599754333496
+    },
+    {
+     "site": "conv3",
+     "units": [
+      4
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 13.867199897766113
+    },
+    {
+     "site": "conv3",
+     "units": [
+      5
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 10.187100410461426
+    },
+    {
+     "site": "conv3",
+     "units": [
+      6
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 9.020400047302246
+    },
+    {
+     "site": "conv3",
+     "units": [
+      7
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 15.375
+    },
+    {
+     "site": "conv3",
+     "units": [
+      8
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 11.046899795532227
+    },
+    {
+     "site": "conv3",
+     "units": [
+      9
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 19.7544002532959
+    },
+    {
+     "site": "conv3",
+     "units": [
+      10
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 15.07229995727539
+    },
+    {
+     "site": "conv3",
+     "units": [
+      11
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 16.218799591064453
+    },
+    {
+     "site": "conv3",
+     "units": [
+      12
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 20.9375
+    },
+    {
+     "site": "conv3",
+     "units": [
+      13
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 14.989700317382812
+    },
+    {
+     "site": "conv3",
+     "units": [
+      14
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 28.16189956665039
+    },
+    {
+     "site": "conv3",
+     "units": [
+      15
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 12.234399795532227
+    },
+    {
+     "site": "conv3",
+     "units": [
+      16
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 21.468799591064453
+    },
+    {
+     "site": "conv3",
+     "units": [
+      17
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 9.802000045776367
+    },
+    {
+     "site": "conv3",
+     "units": [
+      18
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 23.203100204467773
+    },
+    {
+     "site": "conv3",
+     "units": [
+      19
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 4.765600204467773
+    },
+    {
+     "site": "conv3",
+     "units": [
+      20
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 14.18589973449707
+    },
+    {
+     "site": "conv3",
+     "units": [
+      21
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 9.012999534606934
+    },
+    {
+     "site": "conv3",
+     "units": [
+      22
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 10.77340030670166
+    },
+    {
+     "site": "conv3",
+     "units": [
+      23
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 14.875
+    },
+    {
+     "site": "conv3",
+     "units": [
+      24
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 17.0
+    },
+    {
+     "site": "conv3",
+     "units": [
+      25
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 10.859399795532227
+    },
+    {
+     "site": "conv3",
+     "units": [
+      26
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 28.453100204467773
+    },
+    {
+     "site": "conv3",
+     "units": [
+      27
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 18.296899795532227
+    },
+    {
+     "site": "conv3",
+     "units": [
+      28
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 10.525199890136719
+    },
+    {
+     "site": "conv3",
+     "units": [
+      29
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 12.492199897766113
+    },
+    {
+     "site": "conv3",
+     "units": [
+      30
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 10.111599922180176
+    },
+    {
+     "site": "conv3",
+     "units": [
+      31
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 11.625
+    },
+    {
+     "site": "conv3",
+     "units": [
+      32
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 18.247499465942383
+    },
+    {
+     "site": "conv3",
+     "units": [
+      33
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 16.546899795532227
+    },
+    {
+     "site": "conv3",
+     "units": [
+      34
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 18.718799591064453
+    },
+    {
+     "site": "conv3",
+     "units": [
+      35
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 22.234399795532227
+    },
+    {
+     "site": "conv3",
+     "units": [
+      36
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 13.035499572753906
+    },
+    {
+     "site": "conv3",
+     "units": [
+      37
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 10.9975004196167
+    },
+    {
+     "site": "conv3",
+     "units": [
+      38
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 18.031200408935547
+    },
+    {
+     "site": "conv3",
+     "units": [
+      39
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 10.531200408935547
+    },
+    {
+     "site": "conv3",
+     "units": [
+      40
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 28.125
+    },
+    {
+     "site": "conv3",
+     "units": [
+      41
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 18.234399795532227
+    },
+    {
+     "site": "conv3",
+     "units": [
+      42
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 11.66409969329834
+    },
+    {
+     "site": "conv3",
+     "units": [
+      43
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 8.53909969329834
+    },
+    {
+     "site": "conv3",
+     "units": [
+      44
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 32.15620040893555
+    },
+    {
+     "site": "conv3",
+     "units": [
+      45
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 13.0
+    },
+    {
+     "site": "conv3",
+     "units": [
+      46
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 12.054699897766113
+    },
+    {
+     "site": "conv3",
+     "units": [
+      47
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 15.703100204467773
+    },
+    {
+     "site": "conv3",
+     "units": [
+      48
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 30.843799591064453
+    },
+    {
+     "site": "conv3",
+     "units": [
+      49
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 17.859399795532227
+    },
+    {
+     "site": "conv3",
+     "units": [
+      50
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 19.468799591064453
+    },
+    {
+     "site": "conv3",
+     "units": [
+      51
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 9.446900367736816
+    },
+    {
+     "site": "conv3",
+     "units": [
+      52
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 20.3125
+    },
+    {
+     "site": "conv3",
+     "units": [
+      53
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 12.117199897766113
+    },
+    {
+     "site": "conv3",
+     "units": [
+      54
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 20.3125
+    },
+    {
+     "site": "conv3",
+     "units": [
+      55
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 18.015600204467773
+    },
+    {
+     "site": "conv3",
+     "units": [
+      56
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 19.417999267578125
+    },
+    {
+     "site": "conv3",
+     "units": [
+      57
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 17.234399795532227
+    },
+    {
+     "site": "conv3",
+     "units": [
+      58
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 14.28909969329834
+    },
+    {
+     "site": "conv3",
+     "units": [
+      59
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 11.404199600219727
+    },
+    {
+     "site": "conv3",
+     "units": [
+      60
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 23.578100204467773
+    },
+    {
+     "site": "conv3",
+     "units": [
+      61
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 16.25
+    },
+    {
+     "site": "conv3",
+     "units": [
+      62
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 30.028799057006836
+    },
+    {
+     "site": "conv3",
+     "units": [
+      63
+     ],
+     "cell": [
+      0,
+      0
+     ],
+     "value": 15.867199897766113
+    }
+   ]
+  }
+ ]
+}

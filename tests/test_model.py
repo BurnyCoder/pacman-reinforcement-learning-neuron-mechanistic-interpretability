@@ -1,6 +1,5 @@
 """Model loading and intervention semantics."""
 
-import pytest
 import torch
 
 from pacneuron.model import Intervention, compose, load_sf_checkpoint, orthogonal_init_like
