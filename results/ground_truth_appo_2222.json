@@ -1,0 +1,10 @@
+{
+ "steps": 194470,
+ "games": 100,
+ "edible_bit_vs_blue_pixels_agreement": 0.9513703913199979,
+ "timer_vs_any_edible_agreement": 0.9997326065717077,
+ "pellet_eaten_at_player_node": 0.9999688182101653,
+ "pellet_events": 32070,
+ "in_control_fraction": 0.8596184501465521,
+ "maze_layouts": 8
+}
