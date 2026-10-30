@@ -23,8 +23,9 @@ from pacneuron.worker import Pool
 
 log = get_logger(__name__)
 
-# edit_factory(ram_batch [B,128] uint8, step_batch [B]) -> EditFn or None; lets an intervention depend on game state.
-EditFactory = Callable[[np.ndarray, np.ndarray], EditFn | None]
+# edit_factory(ram_batch [B,128] uint8, step_batch [B], job_batch [B]) -> EditFn or None. Lets an intervention
+# depend on game state and, via job indices (positions in `seeds`), differ between games of one batched run.
+EditFactory = Callable[[np.ndarray, np.ndarray, np.ndarray], EditFn | None]
 
 
 def run_games(model: SFActorCritic, seeds, edit_factory: EditFactory | None = None, record_acts: bool = False,
@@ -77,7 +78,7 @@ def run_games(model: SFActorCritic, seeds, edit_factory: EditFactory | None = No
                         push(s["buf"], "game_over", over)
                         if over:
                             rec = {k: np.asarray(v) for k, v in s["buf"].items()}
-                            rec["seed"] = s["seed"]
+                            rec["seed"], rec["job"] = s["seed"], s["k"]
                             if on_game is not None:
                                 on_game(rec)
                                 rec = {"seed": rec["seed"], "score": float(rec["raw_reward"].sum()),
@@ -97,7 +98,8 @@ def run_games(model: SFActorCritic, seeds, edit_factory: EditFactory | None = No
             obs = torch.as_tensor(np.stack([slots[sl]["state"]["obs"] for sl in ready]), device=DEVICE)
             rams = np.stack([slots[sl]["state"]["ram"] for sl in ready])
             steps = np.array([len(slots[sl]["buf"].get("action", [])) for sl in ready])
-            edit = edit_factory(rams, steps) if edit_factory else None
+            jobs = np.array([slots[sl]["k"] for sl in ready])
+            edit = edit_factory(rams, steps, jobs) if edit_factory else None
             with torch.no_grad():
                 out = model(obs, edit=edit)
             probs = torch.softmax(out["logits"].double(), -1).cpu().numpy()
