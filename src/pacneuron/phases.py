@@ -304,12 +304,22 @@ def confirm(seed: str) -> None:
     base_dir = data.split_dir(name, "heldout")  # unsteered held-out collection (seeds 10000-10099) = paired baseline
     if not (base_dir / "mazes.pkl").exists():
         raise RuntimeError("run --phase collect-heldout first (it is the baseline arm)")
+    # play every missing arm (candidates + their null units) in one batched worker pool
+    todo = []
+    for c in cands:
+        if not ((root / c["name"]) / "mazes.pkl").exists():
+            todo.append((root / c["name"], c["spec"], list(HELDOUT_SEEDS[:frozen["n_candidate"]])))
+        for k, ns in enumerate(c["null_specs"]):
+            nd = root / f"null_{c['null_group']}_{k:03d}"
+            if not (nd / "mazes.pkl").exists() and nd not in [t[0] for t in todo]:
+                todo.append((nd, ns, list(HELDOUT_SEEDS[:frozen["n_null"]])))
+    if todo:
+        log.info(f"confirm {name}: playing {len(todo)} arms ({sum(len(t[2]) for t in todo)} games) in one pool")
+        steer.run_arms(model, todo, desc=f"heldout/{name}")
     results = []
     for c in cands:
         kw = c.get("metric_kwargs", {})
         arm_dir = root / c["name"]
-        if not (arm_dir / "mazes.pkl").exists():
-            steer.run_arm(model, HELDOUT_SEEDS[:frozen["n_candidate"]], c["spec"], arm_dir, desc=f"heldout/{c['name']}")
         base = steer.arm_metrics(base_dir, **kw)
         arm = steer.arm_metrics(arm_dir, **kw)
         eff = {mt: _paired_effect(base, arm, mt, c["sign"] if mt == c["metric"] else 1)
@@ -317,8 +327,6 @@ def confirm(seed: str) -> None:
         null_deltas = []
         for k, ns in enumerate(c["null_specs"]):
             nd = root / f"null_{c['null_group']}_{k:03d}"
-            if not (nd / "mazes.pkl").exists():
-                steer.run_arm(model, HELDOUT_SEEDS[:frozen["n_null"]], ns, nd, desc=f"heldout/null_{c['null_group']}_{k}")
             nm = steer.arm_metrics(nd, **kw)
             e = _paired_effect(base, nm, c["metric"], c["sign"])
             if "delta" in e:

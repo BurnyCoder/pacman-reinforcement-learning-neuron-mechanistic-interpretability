@@ -14,7 +14,7 @@ import torch
 
 from pacneuron import data
 from pacneuron.metrics import game_metrics
-from pacneuron.model import Intervention
+from pacneuron.model import Intervention, compose
 from pacneuron.ram import frightened_timer
 from pacneuron.rollout import run_games
 
@@ -26,7 +26,7 @@ def edit_factory(spec: dict | None):
     if spec is None:
         return None
 
-    def make(rams: np.ndarray, _steps: np.ndarray):
+    def make(rams: np.ndarray, _steps: np.ndarray, _jobs: np.ndarray | None = None):
         gate = spec.get("gate", "none")
         rows = None
         if gate != "none":
@@ -45,6 +45,39 @@ def run_arm(model, seeds, spec: dict | None, out_dir: Path, desc: str) -> None:
         np.savez_compressed(out_dir / f"seed_{rec['seed']:06d}.npz", seed=rec["seed"], **{k: rec[k] for k in KEEP})
     _, bank = run_games(model, seeds, edit_factory=edit_factory(spec), on_game=save, desc=desc)
     data.save_bank(out_dir, bank)
+
+
+def run_arms(model, arms: list[tuple[Path, dict, list[int]]], desc: str) -> None:
+    """Play many arms (out_dir, spec, seeds) in ONE worker pool: each game gets its own arm's intervention.
+
+    Equivalent to calling run_arm per arm (same seeds, same per-game RNG), but avoids restarting the pool for
+    every null unit. Interventions of different arms in one GPU batch are applied with per-row masks.
+    """
+    jobs = [(d, spec, s) for d, spec, seeds in arms for s in seeds]
+    arm_of = np.array([next(i for i, a in enumerate(arms) if a[0] == d) for d, _, _ in jobs])
+    makers = [edit_factory(spec) for _, spec, _ in arms]
+    banks: dict[int, object] = {}
+
+    def make(rams, steps, ks):
+        edits = []
+        for a in np.unique(arm_of[ks]):
+            if makers[a] is None:
+                continue
+            ed = makers[a](rams, steps)
+            mask = torch.as_tensor(arm_of[ks] == a)
+            ed.rows = mask if ed.rows is None else (ed.rows & mask)
+            edits.append(ed)
+        return compose(*edits) if edits else None
+
+    for d, _, _ in arms:
+        d.mkdir(parents=True, exist_ok=True)
+
+    def save(rec):
+        d = jobs[rec["job"]][0]
+        np.savez_compressed(d / f"seed_{rec['seed']:06d}.npz", seed=rec["seed"], **{k: rec[k] for k in KEEP})
+    _, bank = run_games(model, [s for _, _, s in jobs], edit_factory=make, on_game=save, desc=desc)
+    for d, _, _ in arms:  # one shared maze bank (ids are consistent across all arms of this run)
+        data.save_bank(d, bank)
 
 
 def arm_metrics(out_dir: Path, **metric_kwargs) -> dict[int, dict]:
