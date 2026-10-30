@@ -25,7 +25,7 @@ def golden():
 
 def test_observations_bit_exact(golden):
     """Same seed + same actions -> identical stacked 84x84 frames at every step, incl. life-loss resets."""
-    game = Game(int(golden["seed"]))
+    game = Game(int(golden["seed"]), sticky=0.0)  # training setting: no sticky actions
     for t, a in enumerate(golden["actions"]):
         np.testing.assert_array_equal(game.obs, golden["obs"][t], err_msg=f"obs differ at step {t}")
         _, life_lost, game_over = game.step(int(a))

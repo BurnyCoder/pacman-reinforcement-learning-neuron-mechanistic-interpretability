@@ -60,7 +60,7 @@ def test_edible_bit_matches_blue_sprites(played):
 
 def test_replay_is_deterministic(played):
     caps = {0, 100, 500}
-    out = replay(0, played["action"], capture=caps)
+    out = replay(0, played["action"], capture=caps, sticky=0.0)
     for t in caps:
         np.testing.assert_array_equal(out[t]["ram"], played["ram"][t])
         np.testing.assert_array_equal(out[t]["obs"], played["obs"][t])
@@ -79,3 +79,15 @@ def test_features_shapes_and_sanity(played):
     has_dir = np.stack([f[f"dir_pellet_{d}"] for d in M.DIRS], 1).astype(bool)
     opens = np.stack([f[f"open_{d}"] for d in M.DIRS], 1).astype(bool)
     assert (~has_dir | opens).all()
+
+
+def test_replay_is_deterministic_with_sticky_actions(played):
+    """Sticky actions draw from ALE's RNG, which env.reset(seed) seeds, so replay(seed, actions) is still exact."""
+    from pacneuron.env import Game
+    game, rams = Game(7, sticky=0.25), []
+    for a in played["action"][:300]:
+        rams.append(game.info["ram"].copy())
+        game.step(int(a))
+    out = replay(7, played["action"][:300], capture={0, 150, 299}, sticky=0.25)
+    for t in (0, 150, 299):
+        np.testing.assert_array_equal(out[t]["ram"], rams[t])

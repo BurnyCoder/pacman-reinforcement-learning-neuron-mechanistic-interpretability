@@ -134,3 +134,38 @@ FAMILY = {
     **{k: "game" for k in ["maze", "life_lost_soon", "reward_next", "ghost_eaten_next"]},
 }
 CATEGORICAL = {"heading", "maze"}  # treated as categories (not ordinal) by the audit
+
+
+# ------------------------------------------------------------------------------------------------------------
+# Spatial ground truth for conv3 channels. conv3 unit (i, j) sees obs pixels [8i, 8i+35] x [8j, 8j+35] of the 84x84
+# input (conv1 k8 s4 -> conv2 k4 s2 -> conv3 k3 s1); we call its central 16 px [8i+10, 8i+25] the cell "core".
+# Screen (160x210) -> obs (84x84) scaling follows the 84x84 INTER_AREA resize in env.py.
+# ------------------------------------------------------------------------------------------------------------
+CELL_TYPES = ("danger", "edible", "player", "pellet", "power")
+
+
+def screen_to_cells(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """[..., 7, 7] bool: which conv3 cell cores contain the screen point (x, y)."""
+    ox, oy = np.asarray(x) * 84 / 160, np.asarray(y) * 84 / 210
+    lo = 8 * np.arange(7) + 10
+    inx = (ox[..., None] >= lo) & (ox[..., None] <= lo + 15)
+    iny = (oy[..., None] >= lo) & (oy[..., None] <= lo + 15)
+    return iny[..., :, None] & inx[..., None, :]
+
+
+def cell_objects(ram: np.ndarray) -> dict[str, np.ndarray]:
+    """Per step, which conv3 cells contain each object type: {type: [T, 7, 7] bool} (pellet: count)."""
+    T = len(ram)
+    pxy, gxy = R.player_xy(ram), R.ghosts_xy(ram)
+    active, edible = R.ghosts_active(ram), R.ghost_edible(ram)
+    out = {"player": screen_to_cells(pxy[:, 0] + 4, pxy[:, 1] + 4.5)}
+    g = screen_to_cells(gxy[..., 0] + 4.5, gxy[..., 1] + 5)  # [T, 4, 7, 7]
+    out["danger"] = (g & (active & ~edible)[..., None, None]).any(1)
+    out["edible"] = (g & (active & edible)[..., None, None]).any(1)
+    pel = R.pellets(ram)  # [T, 14, 18]
+    pc = screen_to_cells(M.PELLET_X[None, :] + 2.0, (7 + 12 * np.arange(14))[:, None] + 1.0)  # [14, 18, 7, 7]
+    out["pellet"] = np.einsum("tij,ijab->tab", pel.astype(np.float32), pc.astype(np.float32))
+    pp = R.power_pills(ram)  # [T, 4]
+    ppc = screen_to_cells(R.POWER_PILL_XY[:, 0] + 2.0, R.POWER_PILL_XY[:, 1] + 3.5)  # [4, 7, 7]
+    out["power"] = np.einsum("tk,kab->tab", pp.astype(np.float32), ppc.astype(np.float32)) > 0
+    return out

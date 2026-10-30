@@ -23,7 +23,7 @@ import cv2
 import gymnasium as gym
 import numpy as np
 
-from pacneuron.config import ENV_ID
+from pacneuron.config import ENV_ID, STICKY
 
 gym.register_envs(ale_py)  # gymnasium>=1.0 does not auto-register ALE ids (https://ale.farama.org/gymnasium-interface/)
 
@@ -182,7 +182,7 @@ class Game:
     on, the info of the step taken, whether a life was lost, and whether the real game is over.
     """
 
-    def __init__(self, seed: int, sticky: float = 0.0):
+    def __init__(self, seed: int, sticky: float = STICKY):
         self.env = make_env(sticky)
         self._life = _find_wrapper(self.env, EpisodicLifeEnv)  # knows whether a termination was real
         # obs = stacked frames the agent acts on next; info = ground truth (RAM, rgb, ...) of that same state.
@@ -204,7 +204,7 @@ class Game:
         self.env.close()
 
 
-def replay(seed: int, actions: np.ndarray, capture: set[int] | None = None, sticky: float = 0.0) -> dict:
+def replay(seed: int, actions: np.ndarray, capture: set[int] | None = None, sticky: float = STICKY) -> dict:
     """Deterministically re-run a recorded game; return RGB frames/obs/RAM at the requested step indices.
 
     Step index t refers to the state the agent acted on at its t-th decision (t=0 after reset).

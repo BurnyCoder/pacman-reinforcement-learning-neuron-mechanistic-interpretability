@@ -71,4 +71,9 @@ N_ACTIONS = 9
 # Preregistered episode splits (policy-RNG seeds). Discovery is used for labelling, screening and
 # candidate selection; held-out is only read by confirmatory phases after the prereg commit.
 DISCOVERY_SEEDS = tuple(range(0, 100))
+# ALE sticky-action probability. The preregistered stochasticity check (results/stochasticity_appo_1111_nosticky.json)
+# found same-start games stay identical for a median of 1230 agent steps (> 200 threshold), so the preregistered
+# fallback applies: every game in the study uses repeat_action_probability = 0.25 (Machado et al. 2018 recommendation,
+# https://arxiv.org/abs/1709.06009). The fidelity tests still run without sticky actions (training setting).
+STICKY = 0.25
 HELDOUT_SEEDS = tuple(range(10000, 10100))

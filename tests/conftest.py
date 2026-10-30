@@ -17,7 +17,7 @@ def model():
 @pytest.fixture(scope="session")
 def played(model):
     """1400 agent steps of game seed 0 (argmax actions, CPU): obs, RGB, RAM per step + actions and rewards."""
-    game, out = Game(0), {"obs": [], "rgb": [], "ram": [], "action": [], "reward": [], "life_lost": []}
+    game, out = Game(0, sticky=0.0), {"obs": [], "rgb": [], "ram": [], "action": [], "reward": [], "life_lost": []}
     for _ in range(1400):
         with torch.no_grad():
             a = int(model(torch.as_tensor(game.obs[None]))["logits"].argmax())

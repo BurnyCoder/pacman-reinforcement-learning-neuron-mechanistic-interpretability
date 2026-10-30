@@ -63,3 +63,14 @@ def test_orthogonal_control_differs_but_shares_normaliser(model):
 def test_milestone_checkpoint_loads():
     path = checkpoint_path("1111", "checkpoint_p0/milestones/checkpoint_000025152_51511296.pth")
     assert load_sf_checkpoint(path).fc.weight.shape == (512, 3136)
+
+
+def test_rank1_conv3_patch_matches_full_forward(model, played):
+    """screen.patch_screen relies on: setting conv3[c,i,j]=v shifts fc_pre by (v - old) * W_fc[:, c*49+i*7+j]."""
+    x = torch.as_tensor(played["obs"][:16])
+    base = model(x)
+    c, i, j, v = 11, 2, 5, 4.0
+    full = model(x, edit=Intervention("conv3", [c], v, cell=(i, j)))
+    k = c * 49 + i * 7 + j
+    pre = base["fc_pre"] + (v - base["conv3"][:, c, i, j])[:, None] * model.fc.weight[:, k]
+    torch.testing.assert_close(model.policy(torch.relu(pre)), full["logits"], atol=1e-4, rtol=1e-4)
