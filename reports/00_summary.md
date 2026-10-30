@@ -80,6 +80,17 @@ Details are in [05_replication.md](05_replication.md).
 2. **Sticky actions lower the agent's score**: discovery mean <!--n:appo_1111:score_sticky-->4082<!--/n-->, vs
    <!--n:appo_1111:score_nosticky-->6384<!--/n--> without sticky actions.
 
+## Planned items not done
+
+- **Planned but not done.**
+  - An input-pixel counterfactual for the top candidates (repainting ghosts as frightened in the observation) to
+    separate ghost appearance from correlated game state.
+  - A per-ghost "visible in the observation" flag (Atari sprite flicker can hide a ghost that RAM reports).
+  - Training dynamics over the 36 milestone checkpoints of agent 1111.
+  - Replication on agents trained with other algorithms (Stable-Baselines3 DQN/PPO).
+  - The OCAtari cross-check of RAM decoding, replaced by pixel-level validation because OCAtari's PyPI package
+    does not build.
+
 ## Glossary
 - **Reward-only RL / no imitation learning**: the agent learns from the game score alone, not from human
   demonstrations.
