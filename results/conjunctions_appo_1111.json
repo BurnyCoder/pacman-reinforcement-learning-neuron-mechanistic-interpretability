@@ -1,0 +1,31 @@
+{
+ "exploratory": true,
+ "units": 367,
+ "models": {
+  "place (lattice node)": {
+   "median_r2": 0.12724039229245276,
+   "frac_gt_0.3": 0.11716621253405994,
+   "frac_gt_0.5": 0.02452316076294278
+  },
+  "place x heading": {
+   "median_r2": 0.20184804305046966,
+   "frac_gt_0.3": 0.30517711171662126,
+   "frac_gt_0.5": 0.07356948228882834
+  },
+  "place x frightened": {
+   "median_r2": 0.16528292804008327,
+   "frac_gt_0.3": 0.23433242506811988,
+   "frac_gt_0.5": 0.05994550408719346
+  },
+  "pellets left (20 bins) x frightened": {
+   "median_r2": 0.022331005607751253,
+   "frac_gt_0.3": 0.027247956403269755,
+   "frac_gt_0.5": 0.010899182561307902
+  },
+  "danger distance (20 bins) x danger direction": {
+   "median_r2": 0.018292116619758825,
+   "frac_gt_0.3": 0.0027247956403269754,
+   "frac_gt_0.5": 0.0
+  }
+ }
+}

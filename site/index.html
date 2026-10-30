@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ms. Pac-Man Neuron Microscope</title>
+<meta name="description" content="Neuron-level interpretability and steering of reward-trained Ms. Pac-Man RL agents: every fc neuron with its top-activating frames, ground-truth label, action attribution, and steering experiments.">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --base: #c3c2b7; --ring: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --pos: #2a78d6; --neg: #e34948; --good: #0ca30c;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark; --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --base: #383835; --ring: rgba(255,255,255,0.10); --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    --pos: #3987e5; --neg: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark; --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --base: #383835; --ring: rgba(255,255,255,0.10); --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --pos: #3987e5; --neg: #e66767;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 26px; margin: 0 0 6px; } h2 { font-size: 18px; margin: 32px 0 8px; } h3 { font-size: 15px; margin: 16px 0 6px; }
+p { margin: 6px 0; color: var(--ink2); max-width: 78ch; } a { color: var(--s1); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 16px 0; }
+.tile { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 12px 14px; }
+.tile .v { font-size: 26px; font-weight: 650; } .tile .k { color: var(--ink2); font-size: 13px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+select, input[type=search], button { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--ring); background: var(--surface); color: var(--ink); }
+label { color: var(--ink2); font-size: 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 8px; cursor: pointer; text-align: left; }
+.card:hover, .card:focus-visible { outline: 2px solid var(--s1); }
+.card img { width: 100%; border-radius: 6px; display: block; image-rendering: pixelated; }
+.card .t { font-weight: 600; font-size: 13px; margin-top: 6px; } .card .m { color: var(--ink2); font-size: 12px; }
+.badge { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 99px; border: 1px solid var(--ring); color: var(--ink2); }
+.badge.clean { color: var(--good); border-color: var(--good); }
+dialog { width: min(980px, calc(100vw - 32px)); max-height: calc(100vh - 32px); border: 1px solid var(--ring); border-radius: 12px; background: var(--surface); color: var(--ink); padding: 18px; }
+dialog::backdrop { background: rgba(0,0,0,0.45); }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; } @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+.pane img { width: 100%; image-rendering: pixelated; border-radius: 6px; }
+.bars { display: grid; grid-template-columns: 130px 1fr 52px; gap: 4px 8px; align-items: center; font-size: 13px; }
+.bar { height: 10px; background: var(--grid); border-radius: 0 4px 4px 0; position: relative; }
+.bar > span { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.num { font-variant-numeric: tabular-nums; color: var(--ink2); text-align: right; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; } th, td { padding: 5px 8px; border-bottom: 1px solid var(--grid); text-align: left; }
+th { color: var(--ink2); font-weight: 600; } td.num { text-align: right; }
+.scroll { overflow-x: auto; }
+video, .media img { max-width: 100%; border-radius: 8px; border: 1px solid var(--ring); }
+.close { float: right; }
+.note { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Ms. Pac-Man Neuron Microscope</h1>
+    <p>Every neuron of a deep RL agent that learned Atari Ms. Pac-Man <b>from game reward only</b> (Sample Factory APPO, 2B steps, no imitation learning), audited Goodfire-style: top-activating frames, a ground-truth label from the console RAM, the neuron's vote on each action, and causal steering tests. Method, preregistration and code: <a href="https://github.com/BurnyCoder/pacman-reinforcement-learning-neuron-mechanistic-interpretability">GitHub repository</a>.</p>
+    <div class="controls"><label>Agent <select id="model"></select></label>
+      <button id="theme" type="button" aria-label="Toggle dark mode">Toggle theme</button></div>
+  </header>
+  <section id="summary" class="tiles" aria-live="polite"></section>
+  <section id="steering"></section>
+  <h2>fc neurons</h2>
+  <p>Label = the single ground-truth feature that best predicts the neuron (out-of-sample R², 20-bin means). "One job" = all features together explain ≥ 30% of its variance and the best single feature explains ≥ 70% of that. Labels are correlational; only the steering section makes causal claims.</p>
+  <div class="controls">
+    <input id="q" type="search" placeholder="Filter by feature, e.g. danger" aria-label="Filter units by feature">
+    <label>Family <select id="fam"><option value="">all</option></select></label>
+    <label><input id="cleanOnly" type="checkbox"> one-job units only</label>
+    <label>Sort <select id="sort"><option value="r2">best R²</option><option value="unit">unit id</option><option value="act">activity</option></select></label>
+    <span id="count" class="note"></span>
+  </div>
+  <div id="grid" class="grid"></div>
+  <h2>conv3 channels</h2>
+  <p>Within-cell AUROC: how well each channel's activation at a 7×7 position detects an object in that position's receptive field (0.5 = chance; location is controlled by comparing only within a cell).</p>
+  <div class="scroll"><table id="conv"></table></div>
+  <dialog id="dlg"></dialog>
+</main>
+<script>
+const FEAT = {
+  player_x: "player x position", player_y: "player y position", heading: "heading", junction: "at a junction",
+  open_up: "wall-free up", open_right: "wall-free right", open_left: "wall-free left", open_down: "wall-free down",
+  d_danger1: "maze distance to nearest dangerous ghost", d_danger2: "distance to 2nd dangerous ghost",
+  eu_danger1: "straight-line distance to nearest dangerous ghost", n_danger_near: "# dangerous ghosts within 5 steps",
+  dir_danger_up: "nearest dangerous ghost is up", dir_danger_right: "nearest dangerous ghost is right",
+  dir_danger_left: "nearest dangerous ghost is left", dir_danger_down: "nearest dangerous ghost is down",
+  d_edible1: "distance to nearest edible ghost", dir_edible_up: "edible ghost is up", dir_edible_right: "edible ghost is right",
+  dir_edible_left: "edible ghost is left", dir_edible_down: "edible ghost is down", frightened: "ghosts frightened (edible)",
+  fright_timer: "frightened time left", n_edible: "# edible ghosts", d_pellet: "distance to nearest pellet",
+  dir_pellet_up: "nearest pellet is up", dir_pellet_right: "nearest pellet is right", dir_pellet_left: "nearest pellet is left",
+  dir_pellet_down: "nearest pellet is down", n_pellets: "pellets left", d_power: "distance to nearest power pill",
+  dir_power_up: "power pill is up", dir_power_right: "power pill is right", dir_power_left: "power pill is left",
+  dir_power_down: "power pill is down", n_power: "power pills left", maze: "maze layout", life_lost_soon: "about to die",
+  reward_next: "reward this step", ghost_eaten_next: "eating a ghost"
+};
+const fmt = (x, d = 2) => (x === null || x === undefined || Number.isNaN(x)) ? "–" : Number(x).toFixed(d);
+const pct = x => (x === null || x === undefined) ? "–" : `${(100 * x).toFixed(1)}%`;
+let D = null;
+const MODELS = ["appo_1111", "appo_2222", "appo_3333"];
+const $ = s => document.querySelector(s);
+
+function setTheme() {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const dark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+  try { localStorage.setItem("theme", dark ? "light" : "dark"); } catch (e) {}
+}
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+$("#theme").onclick = setTheme;
+
+async function load(name) {
+  const r = await fetch(`data/${name}.json`);
+  if (!r.ok) return false;
+  D = await r.json();
+  render();
+  return true;
+}
+
+function tile(v, k) { return `<div class="tile"><div class="v">${v}</div><div class="k">${k}</div></div>`; }
+
+function render() {
+  const s = D.summary, h1 = D.results.h1;
+  const src = h1 ? h1.sets : s;
+  const agent = src.agent, rnd = src.random_dirs, un = src.untrained;
+  $("#summary").innerHTML =
+    tile(D.fc_units.length + " / 512", "fc neurons that ever fire (alive)") +
+    tile(pct(agent.clean_frac), `alive neurons with one main job ${h1 ? "(held-out)" : "(discovery, exploratory)"}`) +
+    tile(pct(rnd.clean_frac), "same score for random directions (control)") +
+    tile(pct(un.clean_frac), "same score for an untrained network (control)");
+  const fams = [...new Set(D.fc_units.map(u => u.family))].sort();
+  $("#fam").innerHTML = `<option value="">all</option>` + fams.map(f => `<option>${f}</option>`).join("");
+  renderSteering();
+  renderGrid();
+  renderConv();
+}
+
+function renderSteering() {
+  const c = D.results.confirm;
+  if (!c) { $("#steering").innerHTML = ""; return; }
+  const rows = c.candidates.map(r => {
+    const e = r.effects[r.metric];
+    return `<tr><td>${r.label}</td><td>${r.metric}</td><td class="num">${fmt(e.base_mean, 3)} → ${fmt(e.arm_mean, 3)}</td>
+      <td class="num">${fmt(e.delta, 3)} [${fmt(e.ci?.[0], 3)}, ${fmt(e.ci?.[1], 3)}]</td><td class="num">${fmt(r.p_holm, 4)}</td>
+      <td>${r.passes_H2 ? "passes" : "fails"}</td></tr>`;
+  }).join("");
+  const vids = (c.candidates || []).map(r => `<figure class="media"><img src="media/${D.model}_${r.name}.gif" alt="Baseline (left) and steered (right) replay for ${r.label}" loading="lazy" onerror="this.parentElement.remove()"><figcaption class="note">${r.label}: baseline (left) vs steered (right), same game seed.</figcaption></figure>`).join("");
+  $("#steering").innerHTML = `<h2>Steering (confirmatory, held-out games)</h2>
+    <div class="scroll"><table><thead><tr><th>intervention</th><th>primary metric</th><th>baseline → steered</th><th>Δ [95% CI]</th><th>Holm p</th><th>preregistered test</th></tr></thead><tbody>${rows}</tbody></table></div>${vids}`;
+}
+
+function renderGrid() {
+  const q = $("#q").value.trim().toLowerCase(), fam = $("#fam").value, clean = $("#cleanOnly").checked, sort = $("#sort").value;
+  let us = D.fc_units.filter(u => (!fam || u.family === fam) && (!clean || u.clean) &&
+    (!q || u.best.includes(q) || (FEAT[u.best] || "").toLowerCase().includes(q)));
+  us.sort(sort === "unit" ? (a, b) => a.unit - b.unit : sort === "act" ? (a, b) => b.frac_active - a.frac_active : (a, b) => b.r2_best - a.r2_best);
+  $("#count").textContent = `${us.length} neurons`;
+  $("#grid").innerHTML = us.map(u => `<button class="card" data-u="${u.unit}" aria-label="Open fc neuron ${u.unit}">
+    <img src="img/${D.model}/fc${String(u.unit).padStart(3, "0")}_top.webp" alt="Top-activating frames of neuron ${u.unit}" loading="lazy">
+    <div class="t">fc ${u.unit} ${u.clean ? '<span class="badge clean">one job</span>' : ""}</div>
+    <div class="m">${u.sign < 0 ? "low " : ""}${FEAT[u.best] || u.best} · R² ${fmt(u.r2_best)}</div></button>`).join("");
+  document.querySelectorAll(".card").forEach(b => b.onclick = () => openUnit(+b.dataset.u));
+}
+
+function bars(items, max, color) {
+  return `<div class="bars">${items.map(([k, v]) => {
+    const w = Math.min(100, Math.abs(v) / max * 100);
+    const left = color === "div" ? (v < 0 ? 50 - w / 2 : 50) : 0, width = color === "div" ? w / 2 : w;
+    const col = color === "div" ? (v < 0 ? "var(--neg)" : "var(--pos)") : "var(--s1)";
+    return `<span>${k}</span><div class="bar" title="${k}: ${fmt(v, 3)}"><span style="left:${left}%;width:${width}%;background:${col}"></span></div><span class="num">${fmt(v, 2)}</span>`;
+  }).join("")}</div>`;
+}
+
+function openUnit(n) {
+  const u = D.fc_units.find(x => x.unit === n), p = `img/${D.model}/fc${String(n).padStart(3, "0")}`;
+  const dmax = Math.max(...u.dla.map(Math.abs));
+  $("#dlg").innerHTML = `<button class="close" onclick="dlg.close()">Close</button>
+    <h2>fc neuron ${n} ${u.clean ? '<span class="badge clean">one job</span>' : ""}</h2>
+    <p><b>Label:</b> fires with ${u.sign < 0 ? "<i>low</i> " : ""}${FEAT[u.best] || u.best} (R² ${fmt(u.r2_best)}; all features together R² ${fmt(u.r2_all)}; runner-up: ${FEAT[u.second] || u.second}, R² ${fmt(u.r2_second)}). Active on ${pct(u.frac_active)} of steps; 99th percentile ${fmt(u.p99)}.</p>
+    <div class="cols"><div class="pane"><h3>Positive pole: top 16 frames</h3><img src="${p}_top.webp" alt="Top-activating frames">
+      <h3>Activation bands (top, 1–5%, 10–50%, bottom)</h3><img src="${p}_bands.webp" alt="Frames sampled from activation quantile bands"></div>
+    <div class="pane"><h3>Best single features (R²)</h3>${bars(u.top_features.map(([k, v]) => [k, v]), 1, "seq")}
+      <h3>Direct vote on actions (W<sub>π</sub> column)</h3>${bars(D.actions.map((a, i) => [a, u.dla[i]]), dmax, "div")}
+      <p class="note">Value-head weight ${fmt(u.w_value, 3)}. Because the policy head is linear and there is no RNN, turning this neuron up by x adds exactly x × these numbers to the action logits.</p>
+      <h3>Negative pole: most suppressed (pre-ReLU)</h3><img src="${p}_neg.webp" alt="Most suppressing frames"></div></div>`;
+  $("#dlg").showModal();
+}
+
+function renderConv() {
+  const types = ["danger", "edible", "player", "pellet", "power"];
+  const cell = v => { const x = Math.max(0, Math.min(1, (v - 0.5) / 0.5)); return `<td class="num" style="background:color-mix(in srgb, var(--s1) ${Math.round(x * 70)}%, transparent)">${fmt(v)}</td>`; };
+  $("#conv").innerHTML = `<thead><tr><th>channel</th><th>active</th>${types.map(t => `<th>${t}</th>`).join("")}</tr></thead><tbody>` +
+    D.conv3_channels.map(c => `<tr><td>conv3 ${c.channel}</td><td class="num">${pct(c.frac_active)}</td>${types.map(t => cell(c.auroc[t])).join("")}</tr>`).join("") + "</tbody>";
+}
+
+["#q", "#fam", "#cleanOnly", "#sort"].forEach(s => $(s).addEventListener("input", () => D && renderGrid()));
+(async () => {
+  const avail = [];
+  for (const m of MODELS) { try { const r = await fetch(`data/${m}.json`, { method: "HEAD" }); if (r.ok) avail.push(m); } catch (e) {} }
+  $("#model").innerHTML = avail.map(m => `<option>${m}</option>`).join("");
+  $("#model").onchange = e => load(e.target.value);
+  if (avail.length) load(avail[0]); else $("#summary").innerHTML = '<p class="note">No exported data yet.</p>';
+})();
+</script>
+</body>
+</html>
