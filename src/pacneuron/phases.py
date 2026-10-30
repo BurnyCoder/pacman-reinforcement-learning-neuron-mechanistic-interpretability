@@ -300,9 +300,9 @@ def confirm(seed: str) -> None:
     cands = [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]
     model = _model(seed)
     root = DATA_DIR / "steer" / name / "heldout"
-    base_dir = root / "baseline"
+    base_dir = data.split_dir(name, "heldout")  # unsteered held-out collection (seeds 10000-10099) = paired baseline
     if not (base_dir / "mazes.pkl").exists():
-        steer.run_arm(model, HELDOUT_SEEDS[:frozen["n_baseline"]], None, base_dir, desc="heldout/baseline")
+        raise RuntimeError("run --phase collect-heldout first (it is the baseline arm)")
     results = []
     for c in cands:
         kw = c.get("metric_kwargs", {})
@@ -324,13 +324,108 @@ def confirm(seed: str) -> None:
                 null_deltas.append(e["delta"])
         signed = c["sign"] * np.array(null_deltas)
         thr = float(np.quantile(signed, 0.95)) if len(signed) else float("nan")
+        sec = None
+        if "secondary_metric" in c:
+            sm = c["secondary_metric"]
+            sec = _paired_effect(steer.arm_metrics(base_dir, **sm["metric_kwargs"]),
+                                 steer.arm_metrics(arm_dir, **sm["metric_kwargs"]), sm["metric"], sm["sign"])
         results.append({"name": c["name"], "label": c.get("label", c["name"]), "spec": c["spec"], "metric": c["metric"],
-                        "sign": c["sign"], "effects": eff, "null_deltas": null_deltas, "null_q95_signed": thr,
-                        "specific": bool(c["sign"] * eff[c["metric"]].get("delta", np.nan) > thr)})
+                        "sign": c["sign"], "effects": eff, "secondary": sec, "null_deltas": null_deltas,
+                        "null_q95_signed": thr, "specific": bool(c["sign"] * eff[c["metric"]].get("delta", np.nan) > thr)})
     p = [r["effects"][r["metric"]].get("p_one_sided", 1.0) for r in results]
     for r, padj in zip(results, holm(p) if p else []):
         e = r["effects"][r["metric"]]
         r["p_holm"] = float(padj)
         r["passes_H2"] = bool(padj < 0.05 and r["sign"] * e.get("delta", 0) > 0 and r["specific"])
-    write_result(f"confirm_{name}", {"lock": lock, "candidates": results,
+    pc = frozen.get("positive_control")
+    pc_res = None
+    if pc and name == "appo_1111":
+        pc_dir = root / pc["name"]
+        if not (pc_dir / "mazes.pkl").exists():
+            steer.run_arm(model, HELDOUT_SEEDS[:frozen["n_candidate"]], pc["spec"], pc_dir, desc=f"heldout/{pc['name']}")
+        pc_res = {"label": pc["label"], "metric": pc["metric"],
+                  "effect": _paired_effect(steer.arm_metrics(base_dir, **pc["metric_kwargs"]),
+                                           steer.arm_metrics(pc_dir, **pc["metric_kwargs"]), pc["metric"], pc["sign"])}
+    write_result(f"confirm_{name}", {"lock": lock, "candidates": results, "positive_control": pc_res,
                                     "H2_supported": any(r["passes_H2"] for r in results)})
+
+
+def fidelity(seed: str) -> None:
+    """Fidelity numbers vs the golden Sample Factory trajectory (tests/test_fidelity.py asserts the same)."""
+    from pacneuron.config import REPO_ROOT
+    from pacneuron.env import Game
+    g = dict(np.load(REPO_ROOT / "tests" / "fixtures" / "sf_golden.npz"))
+    game, mismatched = Game(int(g["seed"]), sticky=0.0), 0
+    for t, a in enumerate(g["actions"]):
+        mismatched += int(not np.array_equal(game.obs, g["obs"][t]))
+        _, _, over = game.step(int(a))
+        if over:
+            break
+    model = _model(seed).cpu()
+    with torch.no_grad():
+        out = model(torch.as_tensor(g["obs"]))
+    write_result("fidelity", {"golden_steps": int(len(g["obs"])), "obs_mismatched_steps": mismatched,
+                              "life_losses": int(g["life_lost"].sum()), "game_over": bool(g["game_over"].any()),
+                              "max_abs_logit_diff": float(np.abs(out["logits"].numpy() - g["logits"]).max()),
+                              "max_abs_value_diff": float(np.abs(out["value"].numpy() - g["values"].reshape(-1)).max()),
+                              "reference_stack": "sample-factory 2.0.3, gym 0.26.2, ale-py 0.8.1, torch 1.13.1 (WSL)"})
+
+
+def ground_truth(seed: str) -> None:
+    """Validation of the RAM ground truth on the discovery games (pixels vs RAM)."""
+    from pacneuron import maze as M
+    from pacneuron import ram as R
+    from pacneuron.features import in_control
+    d = data.split_dir(MODELS[seed].name, "discovery")
+    games = data.load_games(d, ("ram", "blue", "maze"))
+    agree_edible, agree_timer, eat_hits, eat_total, ctrl, n = 0, 0, 0, 0, 0, 0
+    for g in games:
+        ram = g["ram"]
+        ed = R.ghost_edible(ram) & R.ghosts_active(ram)
+        agree_edible += int(((g["blue"] >= 4) == ed).sum())
+        agree_timer += int(((R.frightened_timer(ram) > 0) == R.ghost_edible(ram).any(1)).sum())
+        pel, xy = R.pellets(ram), R.player_xy(ram)
+        node = M.node_of(xy[:, 0], xy[:, 1])
+        for t in range(1, len(ram)):
+            for i, j in zip(*np.where(pel[t - 1] & ~pel[t])):
+                eat_total += 1
+                eat_hits += int(i * M.COLS + j in (node[t - 1], node[t]))
+        ctrl += int(in_control(ram).sum())
+        n += len(ram)
+    write_result(f"ground_truth_{MODELS[seed].name}", {
+        "steps": n, "games": len(games), "edible_bit_vs_blue_pixels_agreement": agree_edible / (4 * n),
+        "timer_vs_any_edible_agreement": agree_timer / n, "pellet_eaten_at_player_node": eat_hits / eat_total,
+        "pellet_events": eat_total, "in_control_fraction": ctrl / n, "maze_layouts": len(data.load_bank(d).mazes)})
+
+
+def conjunctions(seed: str) -> None:
+    """EXPLORATORY (post hoc): are fc units explained by conjunctions (place x heading ...) better than single features?"""
+    name = MODELS[seed].name
+    S = data.load_split(data.split_dir(name, "discovery"), acts=("fc_pre",))
+    F, g = S["features"], S["game"]
+    fc = np.maximum(S["fc_pre"].astype(np.float32), 0)
+    A = fc[:, AU.alive(fc)]
+    fit, ev = g % 2 == 0, g % 2 == 1
+
+    def r2_bins(idx):
+        nb = int(idx.max()) + 1
+        cnt = np.bincount(idx[fit], minlength=nb).astype(np.float64)
+        s = np.asarray(AU._onehot(idx[fit], nb) @ A[fit], np.float64)
+        mu = np.where(cnt[:, None] > 0, s / np.maximum(cnt, 1)[:, None], A[fit].mean(0))
+        y = A[ev]
+        return 1 - ((y - mu[idx[ev]]) ** 2).sum(0) / ((y - y.mean(0)) ** 2).sum(0)
+
+    from pacneuron import maze as M
+    from pacneuron import ram as R
+    xy = R.player_xy(S["ram"])
+    node = M.node_of(xy[:, 0], xy[:, 1])
+    head = F["heading"].astype(int)
+    fr = F["frightened"].astype(int)
+    q = lambda v, n: np.searchsorted(np.unique(np.quantile(v, np.linspace(0, 1, n + 1)[1:-1])), v, side="right")
+    dirs = (F["dir_danger_up"] + 2 * F["dir_danger_right"] + 4 * F["dir_danger_left"] + 8 * F["dir_danger_down"]).astype(int)
+    res = {"place (lattice node)": r2_bins(node), "place x heading": r2_bins(node * 4 + head),
+           "place x frightened": r2_bins(node * 2 + fr), "pellets left (20 bins) x frightened": r2_bins(q(F["n_pellets"], 20) * 2 + fr),
+           "danger distance (20 bins) x danger direction": r2_bins(q(F["d_danger1"], 20) * 16 + dirs)}
+    out = {k: {"median_r2": float(np.median(v)), "frac_gt_0.3": float(np.mean(v > 0.3)), "frac_gt_0.5": float(np.mean(v > 0.5))}
+           for k, v in res.items()}
+    write_result(f"conjunctions_{name}", {"exploratory": True, "units": int(A.shape[1]), "models": out})

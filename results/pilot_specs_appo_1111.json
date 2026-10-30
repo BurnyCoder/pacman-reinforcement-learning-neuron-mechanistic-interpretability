@@ -1,0 +1,145 @@
+[
+ {
+  "name": "c3_ch20_ablate",
+  "spec": {
+   "site": "conv3",
+   "units": [
+    20
+   ],
+   "value": 0.0
+  },
+  "metric": "deaths_per_1k",
+  "sign": 1
+ },
+ {
+  "name": "c3_ch20_clamp_fright",
+  "spec": {
+   "site": "conv3",
+   "units": [
+    20
+   ],
+   "value": 15.803828239440918,
+   "gate": "frightened"
+  },
+  "metric": "ghosts_per_pill",
+  "sign": -1
+ },
+ {
+  "name": "c3_ch20_clamp",
+  "spec": {
+   "site": "conv3",
+   "units": [
+    20
+   ],
+   "value": 15.803828239440918
+  },
+  "metric": "deaths_per_1k",
+  "sign": 1
+ },
+ {
+  "name": "c3_ch39_ablate",
+  "spec": {
+   "site": "conv3",
+   "units": [
+    39
+   ],
+   "value": 0.0
+  },
+  "metric": "deaths_per_1k",
+  "sign": 1
+ },
+ {
+  "name": "c3_ch53_ablate",
+  "spec": {
+   "site": "conv3",
+   "units": [
+    53
+   ],
+   "value": 0.0
+  },
+  "metric": "deaths_per_1k",
+  "sign": 1
+ },
+ {
+  "name": "c3_ch18_cell56",
+  "spec": {
+   "site": "conv3",
+   "units": [
+    18
+   ],
+   "cell": [
+    5,
+    6
+   ],
+   "value": 24.625
+  },
+  "metric": "approach",
+  "sign": -1,
+  "metric_kwargs": {
+   "target_cell": [
+    5,
+    6
+   ]
+  }
+ },
+ {
+  "name": "fc378_ablate",
+  "spec": {
+   "site": "fc",
+   "units": [
+    378
+   ],
+   "value": 0.0
+  },
+  "metric": "action_given_trigger",
+  "sign": -1,
+  "metric_kwargs": {
+   "trigger": "dir_edible_left",
+   "action_set": [
+    3,
+    6,
+    8
+   ]
+  }
+ },
+ {
+  "name": "fc453_ablate",
+  "spec": {
+   "site": "fc",
+   "units": [
+    453
+   ],
+   "value": 0.0
+  },
+  "metric": "action_given_trigger",
+  "sign": -1,
+  "metric_kwargs": {
+   "trigger": "dir_edible_up",
+   "action_set": [
+    1,
+    5,
+    6
+   ]
+  }
+ },
+ {
+  "name": "fc188_clamp",
+  "spec": {
+   "site": "fc",
+   "units": [
+    188
+   ],
+   "value": 15.9453125
+  },
+  "metric": "action_given_trigger",
+  "sign": -1,
+  "metric_kwargs": {
+   "trigger": "open_up",
+   "action_set": [
+    1,
+    5,
+    6
+   ]
+  }
+ }
+]
