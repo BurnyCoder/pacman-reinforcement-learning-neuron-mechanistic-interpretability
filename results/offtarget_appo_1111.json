@@ -1,0 +1,122 @@
+{
+ "tests": [
+  {
+   "candidate": "fc453_ablate",
+   "label": "fc neuron 453 zero-ablated",
+   "metric": "return",
+   "n": 50,
+   "delta": -1619.4,
+   "ci": [
+    -2193.6099999999997,
+    -1056.3900000000003
+   ],
+   "p_two_sided": 9.999000099990002e-05,
+   "q_bh": 0.00014998500149985002
+  },
+  {
+   "candidate": "fc453_ablate",
+   "label": "fc neuron 453 zero-ablated",
+   "metric": "deaths_per_1k",
+   "n": 50,
+   "delta": 1.1377622147240731,
+   "ci": [
+    0.7494306517275678,
+    1.5186401696261278
+   ],
+   "p_two_sided": 9.999000099990002e-05,
+   "q_bh": 0.00014998500149985002
+  },
+  {
+   "candidate": "fc453_ablate",
+   "label": "fc neuron 453 zero-ablated",
+   "metric": "pellets_per_1k",
+   "n": 50,
+   "delta": -9.229363890296195,
+   "ci": [
+    -17.683429633109377,
+    -0.83785396260952
+   ],
+   "p_two_sided": 0.0415958404159584,
+   "q_bh": 0.046795320467953205
+  },
+  {
+   "candidate": "fc453_ablate",
+   "label": "fc neuron 453 zero-ablated",
+   "metric": "in_control",
+   "n": 50,
+   "delta": -469.06,
+   "ci": [
+    -633.3014999999999,
+    -303.7405000000003
+   ],
+   "p_two_sided": 9.999000099990002e-05,
+   "q_bh": 0.00014998500149985002
+  },
+  {
+   "candidate": "c3_ch18_cell56",
+   "label": "conv3 channel 18 set to its p99 at cell (5,6)",
+   "metric": "return",
+   "n": 50,
+   "delta": -2489.6,
+   "ci": [
+    -2990.22,
+    -2004.6
+   ],
+   "p_two_sided": 9.999000099990002e-05,
+   "q_bh": 0.00014998500149985002
+  },
+  {
+   "candidate": "c3_ch18_cell56",
+   "label": "conv3 channel 18 set to its p99 at cell (5,6)",
+   "metric": "deaths_per_1k",
+   "n": 50,
+   "delta": 4.166205135983968,
+   "ci": [
+    3.267711067306914,
+    5.140412327168742
+   ],
+   "p_two_sided": 9.999000099990002e-05,
+   "q_bh": 0.00014998500149985002
+  },
+  {
+   "candidate": "c3_ch18_cell56",
+   "label": "conv3 channel 18 set to its p99 at cell (5,6)",
+   "metric": "pellets_per_1k",
+   "n": 50,
+   "delta": -12.156610985164686,
+   "ci": [
+    -20.78102909016132,
+    -3.8298681906142766
+   ],
+   "p_two_sided": 0.007099290070992901,
+   "q_bh": 0.00912765866270516
+  },
+  {
+   "candidate": "c3_ch18_cell56",
+   "label": "conv3 channel 18 set to its p99 at cell (5,6)",
+   "metric": "ghosts_per_pill",
+   "n": 42,
+   "delta": -0.04500618429189858,
+   "ci": [
+    -0.17582695578231286,
+    0.0946260435992578
+   ],
+   "p_two_sided": 0.5156484351564844,
+   "q_bh": 0.5156484351564844
+  },
+  {
+   "candidate": "c3_ch18_cell56",
+   "label": "conv3 channel 18 set to its p99 at cell (5,6)",
+   "metric": "in_control",
+   "n": 50,
+   "delta": -787.62,
+   "ci": [
+    -944.4969999999998,
+    -633.359
+   ],
+   "p_two_sided": 9.999000099990002e-05,
+   "q_bh": 0.00014998500149985002
+  }
+ ],
+ "correction": "Benjamini-Hochberg over all rows"
+}

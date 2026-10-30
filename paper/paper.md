@@ -30,8 +30,8 @@ unit (channel 18 at one spatial position) to its 99th percentile makes the agent
 region: approach rate <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> →
 <!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->, Holm p <!--n:appo_1111:c3_ch18_cell56:p-->0.0002<!--/n-->. This
 effect is stronger than that of each of the 63 other channels at that position (the preregistered H2 passes).
-Ablating fc neuron 453, a "chase the edible ghost upward" unit, cuts that specific behaviour but does not
-significantly reduce ghosts eaten per power pill (H2 fails for this candidate).
+Ablating fc neuron 453, which votes UP, cuts moving up toward edible ghosts but does not significantly reduce ghosts
+eaten per power pill (H2 fails for this candidate). Its "edible ghost is up" label does not survive confound control.
 
 **Replication.** Frozen selection rules applied to the other two agents give the following (H3):
 
@@ -197,6 +197,30 @@ H1 test (agent minus random directions): 0.6% [0.2%, 0.6%]; H1 supported.
 
 ![](../figures/r2_scatter_appo_1111.png)
 
+Robustness. The CIs below come from a start-state-cluster bootstrap. The threshold sweep shows that agent 1111's
+small advantage over random directions reverses at a looser ratio threshold: at a ratio of 0.5, random directions
+score <!--n:appo_1111:sweep_0.3_0.5:random_dirs-->8.0%<!--/n--> vs the agent's
+<!--n:appo_1111:sweep_0.3_0.5:agent-->1.4%<!--/n-->.
+
+<!-- BEGIN:h1robust_appo_1111 -->
+| unit set | one-job fraction | game-bootstrap 95% CI | start-state-cluster 95% CI |
+|---|---|---|---|
+| trained agent (fc units) | 0.8% | [0.8%, 0.8%] | [0.8%, 0.8%] |
+| random directions (control a) | 0.2% | [0.2%, 0.6%] | [0.2%, 0.4%] |
+| non-negative unit mixtures (control b) | 1.4% | [1.2%, 1.8%] | [1.4%, 2.0%] |
+| untrained network (control c) | 9.4% | [5.2%, 11.6%] | [4.8%, 11.0%] |
+
+Threshold sweep, one-job fraction shown as agent / random directions (rows: R²_all threshold; columns: best-single / R²_all ratio threshold). Start-state clusters: 4.
+
+| R²_all ≥ | ratio ≥ 0.5 | 0.6 | 0.7 | 0.8 | 0.9 |
+|---|---|---|---|---|---|
+| 0.1 | 1.6% / 8.0% | 0.8% / 1.6% | 0.8% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% |
+| 0.2 | 1.6% / 8.0% | 0.8% / 1.6% | 0.8% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% |
+| 0.3 | 1.4% / 8.0% | 0.8% / 1.6% | 0.8% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% |
+| 0.4 | 1.1% / 8.0% | 0.8% / 1.6% | 0.8% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% |
+| 0.5 | 1.1% / 8.0% | 0.8% / 1.6% | 0.8% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% |
+<!-- END:h1robust_appo_1111 -->
+
 Exploratory conjunctions (not preregistered):
 
 <!-- BEGIN:conjunctions_appo_1111 -->
@@ -218,13 +242,20 @@ Exploratory conjunctions (not preregistered):
 | fc neuron 188 clamped to its p99 (constant logit bias, DLA UP -0.70) (positive control) | action_given_trigger (−) | 0.395 → 0.305 | -0.090 [-0.102, -0.079] | – | – | – |
 <!-- END:steer_appo_1111 -->
 
-Off-target effects:
+Off-target effects (two-sided paired sign-flip tests, Benjamini-Hochberg-corrected):
 
 <!-- BEGIN:offtarget_appo_1111 -->
-| intervention | Δ return | Δ deaths / 1k steps | Δ pellets / 1k steps | Δ ghosts per pill |
+| intervention | off-target metric | Δ [95% CI] | two-sided p | BH q |
 |---|---|---|---|---|
-| fc neuron 453 zero-ablated | -1619 [-2194, -1056] | 1.14 [0.75, 1.52] | -9.23 [-17.68, -0.84] | -0.07 [-0.19, 0.10] |
-| conv3 channel 18 set to its p99 at cell (5,6) | -2490 [-2990, -2005] | 4.17 [3.27, 5.14] | -12.16 [-20.78, -3.83] | -0.05 [-0.18, 0.09] |
+| fc neuron 453 zero-ablated | return | -1619 [-2194, -1056] | 0.0001 | 0.0001 |
+| fc neuron 453 zero-ablated | deaths_per_1k | 1.14 [0.75, 1.52] | 0.0001 | 0.0001 |
+| fc neuron 453 zero-ablated | pellets_per_1k | -9.23 [-17.68, -0.84] | 0.0416 | 0.0468 |
+| fc neuron 453 zero-ablated | in_control | -469 [-633, -304] | 0.0001 | 0.0001 |
+| conv3 channel 18 set to its p99 at cell (5,6) | return | -2490 [-2990, -2005] | 0.0001 | 0.0001 |
+| conv3 channel 18 set to its p99 at cell (5,6) | deaths_per_1k | 4.17 [3.27, 5.14] | 0.0001 | 0.0001 |
+| conv3 channel 18 set to its p99 at cell (5,6) | pellets_per_1k | -12.16 [-20.78, -3.83] | 0.0071 | 0.0091 |
+| conv3 channel 18 set to its p99 at cell (5,6) | ghosts_per_pill | -0.05 [-0.18, 0.09] | 0.5156 | 0.5156 |
+| conv3 channel 18 set to its p99 at cell (5,6) | in_control | -788 [-944, -633] | 0.0001 | 0.0001 |
 <!-- END:offtarget_appo_1111 -->
 
 ![](../figures/steer_appo_1111_fc453_ablate.png)
@@ -232,6 +263,25 @@ Off-target effects:
 ![](../figures/steer_appo_1111_c3_ch18_cell56.png)
 
 ![](../figures/occupancy_appo_1111_c3_ch18_cell56.png)
+
+Attribution of the candidate units: exact upstream contributions, occlusion peak, and confound-controlled label
+checks (stratified AUROC within frightened × player-region strata; unique R² = drop-one loss of the
+gradient-boosting ceiling):
+
+<!-- BEGIN:attribution_appo_1111 -->
+| unit | strongest upstream units (mean exact contribution) | occlusion peak (screen x, y) | label checks: single-feature R² / stratified AUROC / unique R² |
+|---|---|---|---|
+| fc neuron 453 zero-ablated | conv3 ch 17 (+5.1), conv3 ch 59 (+4.4), conv3 ch 1 (+4.3) | (57, 90) | dir_edible_up: 0.14 / 0.59 / 0.003; n_pellets: 0.38 / – / 0.007; n_edible: 0.29 / – / 0.002 |
+| conv3 channel 18 set to its p99 at cell (5,6) | conv2 ch 40 (+6.9), conv2 ch 12 (+5.5), conv2 ch 56 (+5.1) | (137, 165) | – |
+<!-- END:attribution_appo_1111 -->
+
+![](../figures/occlusion_appo_1111_c3_ch18_cell56.png)
+
+![](../figures/occlusion_appo_1111_fc453_ablate.png)
+
+The no-go-zone unit depends on input inside its own receptive field. fc 453's "edible ghost is up" label does not
+survive confound control, so its ablation effect is attributed to its UP vote rather than to a ghost-direction
+representation.
 
 Discovery-phase evidence that led to the candidates (exploratory):
 

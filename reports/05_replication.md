@@ -66,6 +66,26 @@ One-job test on held-out games (H1, confirmatory):
 H1 test (agent minus random directions): -0.0% [-0.3%, 0.5%]; H1 not supported.
 <!-- END:h1_appo_2222 -->
 
+Robustness of H1 (start-state clusters, threshold sweep):
+<!-- BEGIN:h1robust_appo_2222 -->
+| unit set | one-job fraction | game-bootstrap 95% CI | start-state-cluster 95% CI |
+|---|---|---|---|
+| trained agent (fc units) | 1.1% | [0.8%, 1.1%] | [0.8%, 1.1%] |
+| random directions (control a) | 1.0% | [0.4%, 1.4%] | [0.2%, 1.4%] |
+| non-negative unit mixtures (control b) | 1.4% | [1.2%, 1.6%] | [1.2%, 1.4%] |
+| untrained network (control c) | 10.2% | [6.6%, 13.2%] | [5.6%, 13.6%] |
+
+Threshold sweep, one-job fraction shown as agent / random directions (rows: R²_all threshold; columns: best-single / R²_all ratio threshold). Start-state clusters: 4.
+
+| R²_all ≥ | ratio ≥ 0.5 | 0.6 | 0.7 | 0.8 | 0.9 |
+|---|---|---|---|---|---|
+| 0.1 | 2.1% / 10.5% | 1.6% / 4.1% | 1.3% / 1.0% | 0.8% / 0.0% | 0.3% / 0.0% |
+| 0.2 | 1.8% / 10.5% | 1.3% / 4.1% | 1.1% / 1.0% | 0.5% / 0.0% | 0.0% / 0.0% |
+| 0.3 | 1.8% / 10.5% | 1.3% / 4.1% | 1.1% / 1.0% | 0.5% / 0.0% | 0.0% / 0.0% |
+| 0.4 | 1.6% / 10.5% | 1.1% / 4.1% | 0.8% / 1.0% | 0.3% / 0.0% | 0.0% / 0.0% |
+| 0.5 | 1.6% / 10.5% | 1.1% / 4.1% | 0.8% / 1.0% | 0.3% / 0.0% | 0.0% / 0.0% |
+<!-- END:h1robust_appo_2222 -->
+
 Steering (held-out, confirmatory):
 <!-- BEGIN:steer_appo_2222 -->
 | intervention | primary metric (predicted sign) | baseline → steered | Δ [95% CI] | Holm p | above null 95th pct? | H2 |
@@ -73,6 +93,29 @@ Steering (held-out, confirmatory):
 | fc neuron 379 zero-ablated | ghosts_per_pill (−) | 0.463 → 0.362 | -0.101 [-0.167, -0.036] | 0.0025 | yes (null q95 0.027) | pass |
 | conv3 channel 3 set to its p99 at cell (0, 0) | approach (−) | 0.430 → 0.396 | -0.034 [-0.043, -0.026] | 0.0002 | yes (null q95 0.007) | pass |
 <!-- END:steer_appo_2222 -->
+
+Attribution of the rule-selected units:
+<!-- BEGIN:attribution_appo_2222 -->
+| unit | strongest upstream units (mean exact contribution) | occlusion peak (screen x, y) | label checks: single-feature R² / stratified AUROC / unique R² |
+|---|---|---|---|
+| fc neuron 379 zero-ablated | conv3 ch 54 (+8.1), conv3 ch 6 (+6.3), conv3 ch 50 (+5.7) | (80, 120) | dir_edible_up: 0.04 / 0.38 / 0.000; n_pellets: 0.25 / – / 0.002; n_power: 0.24 / – / 0.003 |
+| conv3 channel 3 set to its p99 at cell (0, 0) | conv2 ch 56 (+17.5), conv2 ch 3 (+12.4), conv2 ch 30 (+4.5) | (11, 30) | – |
+<!-- END:attribution_appo_2222 -->
+
+Off-target effects (two-sided, BH-corrected):
+<!-- BEGIN:offtarget_appo_2222 -->
+| intervention | off-target metric | Δ [95% CI] | two-sided p | BH q |
+|---|---|---|---|---|
+| fc neuron 379 zero-ablated | return | -2513 [-3180, -1897] | 0.0001 | 0.0001 |
+| fc neuron 379 zero-ablated | deaths_per_1k | 1.13 [0.88, 1.38] | 0.0001 | 0.0001 |
+| fc neuron 379 zero-ablated | pellets_per_1k | -23.85 [-30.23, -17.43] | 0.0001 | 0.0001 |
+| fc neuron 379 zero-ablated | in_control | -637 [-827, -461] | 0.0001 | 0.0001 |
+| conv3 channel 3 set to its p99 at cell (0, 0) | return | -3364 [-4007, -2774] | 0.0001 | 0.0001 |
+| conv3 channel 3 set to its p99 at cell (0, 0) | deaths_per_1k | 3.51 [2.98, 4.07] | 0.0001 | 0.0001 |
+| conv3 channel 3 set to its p99 at cell (0, 0) | pellets_per_1k | -5.60 [-14.44, 3.12] | 0.2257 | 0.2539 |
+| conv3 channel 3 set to its p99 at cell (0, 0) | ghosts_per_pill | 0.07 [-0.12, 0.30] | 0.5110 | 0.5110 |
+| conv3 channel 3 set to its p99 at cell (0, 0) | in_control | -1015 [-1205, -838] | 0.0001 | 0.0001 |
+<!-- END:offtarget_appo_2222 -->
 
 ### Agent 3333
 One-job audit (discovery, exploratory):
@@ -97,6 +140,26 @@ One-job test on held-out games (H1, confirmatory):
 H1 test (agent minus random directions): 0.0% [0.0%, 0.0%]; H1 not supported.
 <!-- END:h1_appo_3333 -->
 
+Robustness of H1 (start-state clusters, threshold sweep):
+<!-- BEGIN:h1robust_appo_3333 -->
+| unit set | one-job fraction | game-bootstrap 95% CI | start-state-cluster 95% CI |
+|---|---|---|---|
+| trained agent (fc units) | 0.0% | [0.0%, 0.0%] | [0.0%, 0.7%] |
+| random directions (control a) | 0.0% | [0.0%, 0.0%] | [0.0%, 0.2%] |
+| non-negative unit mixtures (control b) | 0.0% | [0.0%, 0.0%] | [0.0%, 0.8%] |
+| untrained network (control c) | 10.4% | [8.2%, 12.4%] | [4.6%, 13.2%] |
+
+Threshold sweep, one-job fraction shown as agent / random directions (rows: R²_all threshold; columns: best-single / R²_all ratio threshold). Start-state clusters: 4.
+
+| R²_all ≥ | ratio ≥ 0.5 | 0.6 | 0.7 | 0.8 | 0.9 |
+|---|---|---|---|---|---|
+| 0.1 | 1.9% / 6.4% | 1.0% / 0.2% | 0.2% / 0.0% | 0.2% / 0.0% | 0.0% / 0.0% |
+| 0.2 | 1.9% / 6.4% | 1.0% / 0.2% | 0.2% / 0.0% | 0.2% / 0.0% | 0.0% / 0.0% |
+| 0.3 | 1.7% / 6.4% | 0.7% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% | 0.0% / 0.0% |
+| 0.4 | 1.7% / 6.4% | 0.7% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% | 0.0% / 0.0% |
+| 0.5 | 1.7% / 6.4% | 0.7% / 0.2% | 0.0% / 0.0% | 0.0% / 0.0% | 0.0% / 0.0% |
+<!-- END:h1robust_appo_3333 -->
+
 Steering (held-out, confirmatory):
 <!-- BEGIN:steer_appo_3333 -->
 | intervention | primary metric (predicted sign) | baseline → steered | Δ [95% CI] | Holm p | above null 95th pct? | H2 |
@@ -104,6 +167,29 @@ Steering (held-out, confirmatory):
 | fc neuron 351 zero-ablated | ghosts_per_pill (−) | 0.660 → 0.850 | 0.190 [0.071, 0.301] | 0.9992 | no (null q95 0.019) | fail |
 | conv3 channel 46 set to its p99 at cell (5, 6) | approach (−) | 0.440 → 0.224 | -0.216 [-0.232, -0.200] | 0.0002 | yes (null q95 0.012) | pass |
 <!-- END:steer_appo_3333 -->
+
+Attribution of the rule-selected units:
+<!-- BEGIN:attribution_appo_3333 -->
+| unit | strongest upstream units (mean exact contribution) | occlusion peak (screen x, y) | label checks: single-feature R² / stratified AUROC / unique R² |
+|---|---|---|---|
+| fc neuron 351 zero-ablated | conv3 ch 7 (+6.2), conv3 ch 24 (+4.6), conv3 ch 40 (+4.4) | (137, 15) | dir_edible_down: 0.06 / 0.52 / -0.000; n_pellets: 0.46 / – / 0.008; d_power: 0.32 / – / 0.005 |
+| conv3 channel 46 set to its p99 at cell (5, 6) | conv2 ch 22 (+11.4), conv2 ch 21 (+9.4), conv2 ch 62 (+7.7) | (149, 135) | – |
+<!-- END:attribution_appo_3333 -->
+
+Off-target effects (two-sided, BH-corrected):
+<!-- BEGIN:offtarget_appo_3333 -->
+| intervention | off-target metric | Δ [95% CI] | two-sided p | BH q |
+|---|---|---|---|---|
+| fc neuron 351 zero-ablated | return | -2700 [-3373, -2050] | 0.0001 | 0.0001 |
+| fc neuron 351 zero-ablated | deaths_per_1k | 1.87 [1.29, 2.42] | 0.0001 | 0.0001 |
+| fc neuron 351 zero-ablated | pellets_per_1k | -14.07 [-20.09, -8.13] | 0.0001 | 0.0001 |
+| fc neuron 351 zero-ablated | in_control | -790 [-985, -600] | 0.0001 | 0.0001 |
+| conv3 channel 46 set to its p99 at cell (5, 6) | return | -4486 [-5151, -3858] | 0.0001 | 0.0001 |
+| conv3 channel 46 set to its p99 at cell (5, 6) | deaths_per_1k | 15.41 [14.06, 16.67] | 0.0001 | 0.0001 |
+| conv3 channel 46 set to its p99 at cell (5, 6) | pellets_per_1k | -7.35 [-15.49, 0.77] | 0.0868 | 0.0868 |
+| conv3 channel 46 set to its p99 at cell (5, 6) | ghosts_per_pill | 0.42 [0.31, 0.56] | 0.0001 | 0.0001 |
+| conv3 channel 46 set to its p99 at cell (5, 6) | in_control | -1347 [-1537, -1165] | 0.0001 | 0.0001 |
+<!-- END:offtarget_appo_3333 -->
 
 ## Interpretation
 
@@ -127,6 +213,7 @@ Steering (held-out, confirmatory):
   sharply (`results/confirm_appo_3333.json`, secondary metric).
 - **Agent 1111.** The original candidate (453) showed the same local effect, with a non-significant primary
   outcome.
-- **Conclusion.** The fc "chase the edible ghost in direction d" units are real and causally specific. Their
-  effect on the *outcome* (ghosts eaten) is not consistent: removing one direction's vote changes the route and
-  can even increase ghost eating.
+- **Conclusion.** Ablating these fc units has a causally specific local effect: fewer moves in the unit's voted
+  direction toward edible ghosts. But their "edible ghost is in direction d" labels do not survive confound
+  control (see the attribution tables). Their effect on the *outcome* (ghosts eaten) is not consistent: removing
+  one direction's vote changes the route and can even increase ghost eating.

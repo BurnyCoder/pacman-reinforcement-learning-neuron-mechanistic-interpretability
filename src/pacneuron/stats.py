@@ -65,3 +65,11 @@ def bh(pvals) -> np.ndarray:
         running = min(running, p[idx] * m / (rank + 1))
         adj[idx] = running
     return adj
+
+
+def paired_signflip_p_two_sided(diffs: np.ndarray, n_perm: int = 10000, seed: int = 0) -> float:
+    """Two-sided sign-flip p-value for mean paired difference != 0 (used for off-target metrics)."""
+    d = np.asarray(diffs, float)
+    rng = np.random.default_rng(seed)
+    null = (rng.choice([-1.0, 1.0], size=(n_perm, len(d))) * d).mean(1)
+    return float((1 + np.sum(np.abs(null) >= abs(d.mean()))) / (1 + n_perm))

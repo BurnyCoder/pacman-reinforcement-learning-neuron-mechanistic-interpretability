@@ -14,8 +14,9 @@ import re
 import numpy as np
 
 from pacneuron import viz
-from pacneuron.config import FIGURES_DIR, MODELS, REPO_ROOT, RESULTS_DIR
+from pacneuron.config import DATA_DIR, FIGURES_DIR, MODELS, REPO_ROOT, RESULTS_DIR
 
+NL = chr(10)  # newline joiner for markdown tables
 NAMES = {"agent": "trained agent (fc units)", "random_dirs": "random directions (control a)",
          "nonneg_mix": "non-negative unit mixtures (control b)", "untrained": "untrained network (control c)"}
 
@@ -98,13 +99,50 @@ def steering_table(conf: dict) -> str:
     return "\n".join(rows)
 
 
-def offtarget_table(conf: dict) -> str:
-    rows = ["| intervention | Δ return | Δ deaths / 1k steps | Δ pellets / 1k steps | Δ ghosts per pill |", "|---|---|---|---|---|"]
-    for r in conf["candidates"]:
-        e = r["effects"]
-        cell = lambda k, d=2, e=e: f"{_f(e[k].get('delta'), d)} [{_f(e[k].get('ci', [None])[0], d)}, {_f(e[k].get('ci', [None, None])[1], d)}]"
-        rows.append(f"| {r['label']} | {cell('return', 0)} | {cell('deaths_per_1k')} | {cell('pellets_per_1k')} | {cell('ghosts_per_pill')} |")
-    return "\n".join(rows)
+def offtarget_bh_table(r: dict) -> str:
+    """Preregistration §6 criterion 3: two-sided paired tests of off-target metrics, BH-corrected per agent."""
+    rows = ["| intervention | off-target metric | Δ [95% CI] | two-sided p | BH q |", "|---|---|---|---|---|"]
+    for t in r["tests"]:
+        d = 0 if t["metric"] in ("return", "in_control") else 2
+        rows.append(f"| {t['label']} | {t['metric']} | {_f(t['delta'], d)} [{_f(t['ci'][0], d)}, {_f(t['ci'][1], d)}] | "
+                    f"{_f(t['p_two_sided'], 4)} | {_f(t['q_bh'], 4)} |")
+    return NL.join(rows)
+
+
+def h1_robustness_table(h1: dict) -> str:
+    """Start-state-cluster bootstrap CIs and the threshold sweep (R²_all threshold x ratio threshold)."""
+    rows = ["| unit set | one-job fraction | game-bootstrap 95% CI | start-state-cluster 95% CI |", "|---|---|---|---|"]
+    for k, nm in NAMES.items():
+        v = h1["sets"][k]
+        rows.append(f"| {nm} | {_pct(v['clean_frac'])} | [{_pct(v['ci'][0])}, {_pct(v['ci'][1])}] | "
+                    f"[{_pct(v['ci_start_groups'][0])}, {_pct(v['ci_start_groups'][1])}] |")
+    rows += ["", f"Threshold sweep, one-job fraction shown as agent / random directions (rows: R²_all threshold; "
+             f"columns: best-single / R²_all ratio threshold). Start-state clusters: {h1['n_start_groups']}.", "",
+             "| R²_all ≥ | ratio ≥ 0.5 | 0.6 | 0.7 | 0.8 | 0.9 |", "|---|---|---|---|---|---|"]
+    a, r = h1["sets"]["agent"]["threshold_sweep"], h1["sets"]["random_dirs"]["threshold_sweep"]
+    for ta in ("0.1", "0.2", "0.3", "0.4", "0.5"):
+        rows.append(f"| {ta} | " + " | ".join(f"{_pct(a[f'{ta}_{tr}'])} / {_pct(r[f'{ta}_{tr}'])}"
+                                                for tr in ("0.5", "0.6", "0.7", "0.8", "0.9")) + " |")
+    return NL.join(rows)
+
+
+def attribution_table(r: dict) -> str:
+    """Upstream exact contributions, occlusion peak and confound-controlled label checks per candidate unit."""
+    rows = ["| unit | strongest upstream units (mean exact contribution) | occlusion peak (screen x, y) | "
+            "label checks: single-feature R² / stratified AUROC / unique R² |", "|---|---|---|---|"]
+    for v in r["candidates"].values():
+        occ = np.array(v["occlusion"])
+        a, b = np.unravel_index(int(np.argmax(occ)), occ.shape)
+        x, y = (6 * b + 6) * 160 / 84, (6 * a + 6) * 210 / 84
+        up = v.get("upstream_conv3") or v.get("upstream_conv2")
+        lay = "conv3" if "upstream_conv3" in v else "conv2"
+        ups = ", ".join(f"{lay} ch {c} ({w:+.1f})" for c, w in up[:3])
+        checks = "–"
+        if "label_checks" in v:
+            checks = "; ".join(f"{f}: {_f(d['r2_single'], 2)} / {_f(d['stratified_auroc'], 2)} / "
+                               f"{_f(v['unique_r2'].get(f), 3)}" for f, d in v["label_checks"].items())
+        rows.append(f"| {v['label']} | {ups} | ({x:.0f}, {y:.0f}) | {checks} |")
+    return NL.join(rows)
 
 
 def fidelity_table(r: dict) -> str:
@@ -216,6 +254,9 @@ def generate() -> None:
             dv = h1["sets"]["agent"]["diff_vs_random_dirs"]
             nums[f"{name}:h1_diff"] = f"{_pct(dv['mean'])} [{_pct(dv['ci'][0])}, {_pct(dv['ci'][1])}]"
             nums[f"{name}:h1_verdict"] = "supported" if h1["H1_supported"] else "not supported"
+            blocks[f"h1robust_{name}"] = h1_robustness_table(h1)
+            for k in ("agent", "random_dirs"):
+                nums[f"{name}:sweep_0.3_0.5:{k}"] = _pct(h1["sets"][k]["threshold_sweep"]["0.3_0.5"])
             blocks[f"h1_{name}"] = clean_table(h1["sets"], "held-out, confirmatory") + \
                 f"\n\nH1 test (agent minus random directions): {nums[f'{name}:h1_diff']}; H1 {nums[f'{name}:h1_verdict']}."
             viz.clean_fraction_bars(h1["sets"], FIGURES_DIR / f"clean_fraction_{name}.png",
@@ -229,9 +270,20 @@ def generate() -> None:
                 viz.occupancy_maps(np.load(frame_f), np.array(o["baseline"]), np.array(o["steered"]), tuple(o["cell"]),
                                    FIGURES_DIR / f"occupancy_{name}_{cname}.png",
                                    f"{name}: where the agent goes, with and without {cname} (held-out, outlined: patched cell)")
+        if at := _load(f"attribution_{name}"):
+            blocks[f"attribution_{name}"] = attribution_table(at)
+            for cname, v in at["candidates"].items():
+                tf = DATA_DIR / "analysis" / f"topframe_{name}_{cname}.npy"
+                if tf.exists():
+                    viz.occlusion_overlay(np.load(tf), np.array(v["occlusion"]), FIGURES_DIR / f"occlusion_{name}_{cname}.png",
+                                          f"{name}: {v['label']}", at["occlusion_patch"], at["occlusion_stride"])
+                for f, d in v.get("label_checks", {}).items():
+                    nums[f"{name}:{cname}:auroc:{f}"] = _f(d["stratified_auroc"], 2)
+                    nums[f"{name}:{cname}:uniq:{f}"] = _f(v["unique_r2"].get(f), 3)
+        if ot := _load(f"offtarget_{name}"):
+            blocks[f"offtarget_{name}"] = offtarget_bh_table(ot)
         if conf := _load(f"confirm_{name}"):
             blocks[f"steer_{name}"] = steering_table(conf)
-            blocks[f"offtarget_{name}"] = offtarget_table(conf)
             nums[f"{name}:h2_verdict"] = "supported" if conf["H2_supported"] else "not supported"
             for r in conf["candidates"]:
                 e = r["effects"][r["metric"]]

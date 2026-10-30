@@ -160,3 +160,27 @@ def occupancy_maps(frame: np.ndarray, base: np.ndarray, steered: np.ndarray, cel
     fig.suptitle(title + "\ncolour = share of in-control steps at each maze node", x=0.01, ha="left",
                  fontweight="bold", fontsize=9)
     save(fig, path)
+
+
+def occlusion_overlay(frame: np.ndarray, occ: np.ndarray, path: Path, title: str, patch: int = 12, stride: int = 6) -> None:
+    """Occlusion map (activation drop when a patch is replaced by the mean frame) over one top-activating frame.
+
+    Patch (a, b) covers obs rows/cols [stride*a, stride*a + patch); obs 84x84 spans the full 210x160 screen.
+    Diverging colours: red = occluding here lowers the unit's activation (the unit relies on it), blue = raises it.
+    """
+    style()
+    fig, ax = plt.subplots(figsize=(3.8, 4.6))
+    ax.imshow(frame, extent=(0, 160, 210, 0))
+    n = occ.shape[0]
+    acc, cnt = np.zeros((84, 84)), np.zeros((84, 84))
+    for a in range(n):
+        for b in range(n):
+            acc[stride * a:stride * a + patch, stride * b:stride * b + patch] += occ[a, b]
+            cnt[stride * a:stride * a + patch, stride * b:stride * b + patch] += 1
+    m = acc / np.maximum(cnt, 1)
+    vmax = float(np.abs(m).max()) or 1.0
+    im = ax.imshow(m, extent=(0, 160, 210, 0), cmap=DIVERGING, vmin=-vmax, vmax=vmax, alpha=0.55)
+    ax.axis("off")
+    fig.colorbar(im, ax=ax, fraction=0.045, pad=0.02, label="activation drop when occluded")
+    ax.set_title(title, loc="left", fontsize=9)
+    save(fig, path)
