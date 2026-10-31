@@ -6,5 +6,17 @@
  "pellet_eaten_at_player_node": 1.0,
  "pellet_events": 29570,
  "in_control_fraction": 0.8542043525064089,
- "maze_layouts": 3
+ "maze_layouts": 3,
+ "edible_disagreements": 32490,
+ "disagree_bit_without_blue": 0.9591874422899354,
+ "disagree_blue_without_bit": 0.04081255771006464,
+ "disagree_median_ticks": 12.0,
+ "disagree_share_ticks_le_10": 0.410803324099723,
+ "edible_share_ticks_le_10": 0.10084978367733032,
+ "timer_start_min": 38,
+ "timer_start_max": 63,
+ "timer_starts": 328,
+ "timer_drop_mode_per_4_steps": 2,
+ "timer_drop_mode_share": 0.9733252588170833,
+ "timer_upper_bits_share_of_frightened_steps": 0.312942700252297
 }

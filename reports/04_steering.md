@@ -6,8 +6,9 @@ what matched random units do?
 
 ## Structural fact that shapes the design
 The agent has no RNN, and its policy head is linear on the 512 fc units. So for an fc unit n:
-- **Clamping** it to v shifts the logits by exactly (v − h_n(s)) · W_π[:, n]. That is a state-independent vote
-  for fixed actions, apart from the h_n(s) term (`tests/test_model.py::test_fc_clamp_equals_logit_bias`).
+- **Clamping** it to v shifts the logits by exactly (v − h_n(s)) · W_π[:, n]
+  (`tests/test_model.py::test_fc_clamp_equals_logit_bias`). This replaces the unit's state-dependent vote
+  h_n(s)·W_π[:, n] with the constant v·W_π[:, n], which is a constant bias wherever the unit is inactive.
 - **Ablating** it removes a state-dependent vote: whatever the unit adds when it fires.
 
 Steering *upstream*, in conv3 (64 channels × 7×7 cells), acts through 512 ReLUs, so its effect can depend on the
@@ -34,7 +35,7 @@ state. Setting a single conv3 unit is an exact rank-1 update of the fc pre-activ
 <!-- END:screen_appo_1111 -->
 2. **fc ablation screen.** Zero each unit and measure the change in P(move toward the nearest edible ghost /
    dangerous ghost / pellet). The top unit for edible ghosts is fc 453. Its best direction feature is "nearest
-   edible ghost is up", and it votes for UP.
+   edible ghost is up" (its best feature overall is pellets left), and it votes for UP.
 3. **Closed-loop pilots** on discovery seeds 0–29, paired with the unsteered discovery games of the same seeds:
    <!-- BEGIN:pilot_appo_1111 -->
 | intervention (discovery pilot, paired games) | targeted metric | baseline → steered | Δ [95% CI] | Δ return | Δ deaths / 1k |
@@ -58,6 +59,8 @@ state. Setting a single conv3 unit is an exact rank-1 update of the fc pre-activ
 | fc neuron 453 zero-ablated | ghosts_per_pill (−) | 0.294 → 0.228 | -0.066 [-0.192, 0.101] | 0.2280 | yes (null q95 0.013) | fail |
 | conv3 channel 18 set to its p99 at cell (5,6) | approach (−) | 0.424 → 0.361 | -0.063 [-0.077, -0.050] | 0.0002 | yes (null q95 0.013) | pass |
 | fc neuron 188 clamped to its p99 (constant logit bias, DLA UP -0.70) (positive control) | action_given_trigger (−) | 0.395 → 0.305 | -0.090 [-0.102, -0.079] | – | – | – |
+
+p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test (1/10,001); 0.0002 is that floor after Holm over 2 tests, so it means p ≤ that value. The positive control's frozen label says "constant logit bias": clamping unit n to v shifts the logits by (v − h_n(s))·W_π[:, n], which is constant only on steps where the unit is inactive (fc 188: active on 2.1% of in-control discovery steps).
 <!-- END:steer_appo_1111 -->
 
 Off-target effects, i.e. how much else changes (preregistration §6 criterion 3: paired Δ [95% CI], two-sided
@@ -74,6 +77,8 @@ sign-flip test, Benjamini-Hochberg across all off-target tests of the agent):
 | conv3 channel 18 set to its p99 at cell (5,6) | pellets_per_1k | -12.16 [-20.78, -3.83] | 0.0071 | 0.0091 |
 | conv3 channel 18 set to its p99 at cell (5,6) | ghosts_per_pill | -0.05 [-0.18, 0.09] | 0.5156 | 0.5156 |
 | conv3 channel 18 set to its p99 at cell (5,6) | in_control | -788 [-944, -633] | 0.0001 | 0.0001 |
+
+p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test (1/10,001), so it means p ≤ that value.
 <!-- END:offtarget_appo_1111 -->
 
 Secondary mechanistic metric for fc 453: P(UP-ish action | nearest edible ghost is up)
@@ -92,8 +97,8 @@ Videos (left: unsteered, right: steered, same game seed and sticky-action RNG):
 
 ### conv3 channel 18 at cell (5,6): a single unit that creates a "no-go zone" (H2 passes)
 - **The intervention.** Writing the unit's own 99th-percentile activation into one position of one conv3 channel.
-  The unit's receptive field covers the lower-right corridors of the maze (outlined in the video and the occupancy
-  figure).
+  The unit's 36×36-pixel receptive field (of the 84×84 input) covers the lower right of the maze. The video and the
+  occupancy figure outline its central 16×16-pixel core.
 - **The effect.** The agent moves toward that location less often:
   - approach rate <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> →
     <!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->, Δ <!--n:appo_1111:c3_ch18_cell56:delta-->-0.063 [-0.077, -0.050]<!--/n-->;
@@ -103,15 +108,18 @@ Videos (left: unsteered, right: steered, same game seed and sticky-action RNG):
   <!--n:appo_1111:c3_ch18_cell56:null_mean-->-0.004<!--/n-->).
   <!--n:appo_1111:c3_ch18_cell56:null_ge-->0<!--/n--> of them reach channel 18's effect. The repulsion is a
   property of this channel at this place, not of perturbing conv3 there.
-- **Consequences.** The agent leaves pellets in the avoided region uneaten, so levels last longer and it dies more:
-  - deaths per 1k steps Δ <!--n:appo_1111:c3_ch18_cell56:deaths_per_1k-->4.2 [3.3, 5.1]<!--/n-->;
+- **Consequences.** Overall play gets worse. We did not measure pellets per maze region, only per game:
+  - deaths per 1k in-control steps Δ <!--n:appo_1111:c3_ch18_cell56:deaths_per_1k-->4.2 [3.3, 5.1]<!--/n-->;
+  - pellets per 1k in-control steps Δ <!--n:appo_1111:c3_ch18_cell56:pellets_per_1k-->-12.2 [-20.8, -3.8]<!--/n-->;
   - return Δ <!--n:appo_1111:c3_ch18_cell56:return-->-2490 [-2990, -2005]<!--/n-->.
-- **What it does not show.** That channel 18 "means" danger. Its object-detection AUROCs are near chance (see the
-  audit). The result is causal and behavioural ("activity here repels the agent from here"). The semantic label
-  remains open.
+- **What it does not show.** That channel 18 "means" danger. Its location-controlled object AUROCs are near chance
+  (see the audit). Its strongest activations do coincide with Ms. Pac-Man being in its receptive field: she is within
+  12 px of its occlusion peak in <!--n:appo_1111:c3_ch18_cell56:near_peak-->98.0% of its 50 top states<!--/n-->
+  (exploratory). The result is causal and behavioural ("activity here repels the agent from here"). The semantic
+  label remains open.
 - **Prior work.** This parallels the "cheese channel" retargeting of a Procgen maze agent
-  ([Mini, Turner et al. 2023](https://arxiv.org/abs/2310.08043)), here with a repelling sign and in an Atari agent
-  trained by APPO.
+  ([Mini et al. 2023](https://arxiv.org/abs/2310.08043)), here with a repelling sign and in an Atari agent trained by
+  APPO.
 
 ### fc neuron 453 ablation: a predicted local effect that does not carry to the preregistered outcome (H2 fails)
 - **The predicted local effect holds.** Ablating fc 453 sharply reduces moving up when the nearest edible ghost
@@ -122,13 +130,20 @@ Videos (left: unsteered, right: steered, same game seed and sticky-action RNG):
   <!--n:appo_1111:fc453_ablate:base-->0.294<!--/n--> to <!--n:appo_1111:fc453_ablate:arm-->0.228<!--/n-->
   (Δ <!--n:appo_1111:fc453_ablate:delta-->-0.066 [-0.192, 0.101]<!--/n-->, Holm p <!--n:appo_1111:fc453_ablate:p-->0.2280<!--/n-->).
   That is not significant, so the candidate **fails** H2 as preregistered.
-- **But it is the largest effect in its layer.** <!--n:appo_1111:fc453_ablate:null_ge-->0<!--/n--> of
+- **It still beats every null unit tested.** <!--n:appo_1111:fc453_ablate:null_ge-->0<!--/n--> of
   <!--n:appo_1111:fc453_ablate:null_n-->99<!--/n--> random fc ablations reduce ghost eating as much (null mean
-  <!--n:appo_1111:fc453_ablate:null_mean-->0.006<!--/n-->). The miss is a power problem with a noisy per-game ratio
-  metric, not evidence that the unit is irrelevant.
+  <!--n:appo_1111:fc453_ablate:null_mean-->0.006<!--/n-->). The strongest null, however, is nearly as large (Δ
+  <!--n:appo_1111:fc453_ablate:null_best-->-0.0652<!--/n--> vs <!--n:appo_1111:fc453_ablate:delta4-->-0.0659<!--/n-->),
+  and only 99 of the 367 alive units were tested. The miss is consistent with low power for a noisy per-game ratio
+  metric; it is not evidence that the unit is irrelevant.
 - **Winner's curse.** The discovery pilot showed a much larger drop:
   <!--n:appo_1111:pilot:fc453_ablate:ghosts_per_pill-->0.392 → 0.140 (Δ -0.252 [-0.331, -0.171])<!--/n-->. Selecting a candidate on its discovery effect
-  inflates that estimate, which is exactly why confirmatory effect sizes come only from held-out games.
+  inflates that estimate, which is exactly why confirmatory effect sizes come only from held-out games. The
+  event-level effects did not shrink. Approach under the channel-18 patch went from
+  <!--n:appo_1111:pilot:c3_ch18_cell56:approach-->0.430 → 0.375 (Δ -0.056 [-0.068, -0.044])<!--/n--> in the pilot to
+  Δ <!--n:appo_1111:c3_ch18_cell56:delta-->-0.063 [-0.077, -0.050]<!--/n--> held-out, and fc 453's secondary metric
+  went from <!--n:appo_1111:pilot:fc453_ablate:action_given_trigger-->0.483 → 0.298 (Δ -0.184 [-0.204, -0.164])<!--/n-->
+  to <!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n-->.
 
 ### Attribution of the candidate units (discovery data; exact or model-based)
 - **conv3 units.** Upstream contributions come from conv2 and are exact for the linear pre-activation.
@@ -136,8 +151,9 @@ Videos (left: unsteered, right: steered, same game seed and sticky-action RNG):
   confounds:
   - stratified AUROC within frightened × 3×3 player-region strata;
   - unique R² (the drop in the gradient-boosting ceiling when the feature is removed).
-- **Occlusion.** The occlusion peak is the screen location whose 12×12-observation-pixel patch, replaced by the
-  mean frame, lowers the unit most.
+- **Occlusion** ([Zeiler & Fergus 2014](https://arxiv.org/abs/1311.2901)). The occlusion peak is the screen location
+  whose 12×12-observation-pixel patch, replaced by the mean frame, lowers the unit most on average over its 50 top
+  discovery states. The figures draw this average over the single top state.
 
 <!-- BEGIN:attribution_appo_1111 -->
 | unit | strongest upstream units (mean exact contribution) | occlusion peak (screen x, y) | label checks: single-feature R² / stratified AUROC / unique R² |
@@ -156,17 +172,29 @@ What this changes:
   - stratified AUROC <!--n:appo_1111:fc453_ablate:auroc:dir_edible_up-->0.59<!--/n-->;
   - unique R² <!--n:appo_1111:fc453_ablate:uniq:dir_edible_up-->0.003<!--/n-->.
 
-  Its causal effect on "move up when the edible ghost is up" therefore comes from its fixed UP vote (direct logit
-  attribution), applied in the states where it fires (mostly frightened mode early in a level). It does not come
-  from a clean "ghost is up" representation. "Chase the edible ghost upward" describes the effect of removing it,
-  not what it encodes.
+  Its causal effect on "move up when the edible ghost is up" therefore most plausibly comes from its fixed UP vote
+  (direct logit attribution), applied in the states where it fires. Those are mostly frightened-mode states:
+  <!--n:appo_1111:fc453_ablate:fright_active-->88.8%<!--/n--> of its active steps, against
+  <!--n:appo_1111:fc453_ablate:fright_base-->40.3%<!--/n--> of all in-control steps. Its activation also tracks pellets
+  left (table above). It does not come from a clean "ghost is up" representation. "Chase the edible ghost upward"
+  describes the effect of removing it, not what it encodes.
+- **fc 453's occlusion map** peaks where Ms. Pac-Man is: she is within 12 px of the peak in
+  <!--n:appo_1111:fc453_ablate:near_peak-->80.0% of its 50 top states<!--/n-->. Those states largely repeat one
+  early-game moment (<!--n:appo_1111:fc453_ablate:top_repeat-->86.0% of them within 10 steps of step 379, from 46 games<!--/n-->),
+  and occlusion cannot separate Ms. Pac-Man from the maze patch she occupies.
 
 ### Caveats
 - Steering this agent damages overall play for most interventions; even the positive control hurts. The matched
   null distribution, not the unsteered baseline, is the right yardstick for "specific".
 - Doses are fixed at each unit's discovery 99th percentile. Larger doses produce larger effects in the
   open-loop screen, but leave the activation distribution. Exploratory: the strongest single-unit repulsion at
-  junctions is <!--n:appo_1111:dose:p99-->-5.8 pp<!--/n--> at p99, <!--n:appo_1111:dose:max-->-11.0 pp<!--/n--> at the
-  channel's max, and <!--n:appo_1111:dose:2x_max-->-40.7 pp<!--/n--> at twice the max.
+  junctions is <!--n:appo_1111:dose:p99-->-5.8 pp<!--/n--> at each unit's p99
+  (<!--n:appo_1111:dose_unit:p99-->channel 18 at (5, 6)<!--/n-->), <!--n:appo_1111:dose:max-->-11.0 pp<!--/n--> at each
+  channel's max (<!--n:appo_1111:dose_unit:max-->channel 18 at (5, 6)<!--/n-->), and
+  <!--n:appo_1111:dose:2x_max-->-40.7 pp<!--/n--> at twice the max
+  (<!--n:appo_1111:dose_unit:2x_max-->channel 6 at (2, 5)<!--/n-->).
 - All games use sticky actions (p = 0.25). Steered and baseline games share seeds, but their trajectories diverge
-  once an action differs, so per-game differences mix direct and downstream effects.
+  once an action differs, so per-game differences mix direct and downstream effects. Without an intervention, the
+  steering runner replays <!--n:appo_1111:aa_identical-->50 of 50<!--/n--> baseline games action for action (A/A
+  arm, `results/aa_control_appo_1111.json`). So the divergence comes from the intervention, not from GPU batching.
+- p-values of 0.0001 (0.0002 after Holm) are the floor of the 10,000-permutation test.

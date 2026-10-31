@@ -1,8 +1,9 @@
 # Experiment 3: Neuron audit — do the agent's neurons have "one main job"?
 
 ## Question and hypothesis (preregistered H1)
-- **Claim tested.** Goodfire argues that most neuron poles of trained networks have one main job
-  (https://already-clean.goodfire.com/).
+- **Claim tested.** Goodfire argues that the neurons of trained vision and language networks are largely
+  interpretable. In its preliminary Qwen3-32B audits, "roughly 90% of neuron poles have one main job"
+  ([Cammarata, Goodfire 2026](https://already-clean.goodfire.com/)).
 - **Prediction.** For the 512-unit fc layer of the Ms. Pac-Man agent, the fraction of alive units well explained
   by a *single* ground-truth feature is larger than for random directions of the same layer (the
   privileged-basis test), for non-negative random mixtures of units, and for an untrained network.
@@ -22,9 +23,11 @@
 - **Controls.**
   - (a) 512 random orthonormal directions of the post-ReLU fc space;
   - (b) 512 non-negative Dirichlet mixtures of 2–8 alive units;
-  - (c) the fc units of an orthogonally initialised untrained network evaluated on the same states.
-- **Statistics.** Game-cluster bootstrap (10,000 resamples) of the difference in one-job fraction, plus a
-  robustness bootstrap over start-state clusters.
+  - (c) the alive fc units of an orthogonally initialised untrained network evaluated on the same states. It uses
+    init seed 0 for every agent (identical weights across agents) and that agent's own observation normaliser.
+- **Statistics.** Game-cluster bootstrap of the difference in one-job fraction: 10,000 resamples for H1, 2,000 for
+  the exploratory audit. The fitted models are fixed and only the scored games are resampled. A robustness bootstrap
+  over start-state clusters (2,000 resamples) is added.
 - **Splits.** Exploratory: fit on even discovery games, score on odd ones. Confirmatory: fit on all discovery
   games, score on held-out games.
 
@@ -32,10 +35,10 @@
 <!-- BEGIN:audit_appo_1111 -->
 | unit set (discovery split-half, exploratory) | units | one-job fraction [95% CI] | median R²_all | median best single R² |
 |---|---|---|---|---|
-| trained agent (fc units) | 367 | 0.8% | 0.717 | 0.029 |
-| random directions (control a) | 512 | 0.6% | 0.720 | 0.187 |
-| non-negative unit mixtures (control b) | 512 | 1.6% | 0.733 | 0.051 |
-| untrained network (control c) | 499 | 10.6% | 0.534 | 0.092 |
+| trained agent (fc units) | 367 | 0.8% [CI not computed in this run] | 0.717 | 0.029 |
+| random directions (control a) | 512 | 0.6% [CI not computed in this run] | 0.720 | 0.187 |
+| non-negative unit mixtures (control b) | 512 | 1.6% [CI not computed in this run] | 0.733 | 0.051 |
+| untrained network (control c) | 499 | 10.6% [CI not computed in this run] | 0.534 | 0.092 |
 <!-- END:audit_appo_1111 -->
 
 ![one-job fraction, discovery](../figures/clean_fraction_discovery_appo_1111.png)
@@ -92,10 +95,17 @@ variables explain them, using joint bins on the maze lattice:
 | danger distance (20 bins) x danger direction | 0.018 | 0.3% | 0.0% |
 <!-- END:conjunctions_appo_1111 -->
 
-Ms. Pac-Man's lattice tile combined with her heading explains fc units far better than any single feature. Many
-fc neurons behave like **place × heading cells** (cf. hippocampal place cells). Ghost-related variables, even as
-conjunctions, explain little. This is consistent with [Greydanus et al. 2018](https://arxiv.org/abs/1711.00138):
-their Ms. Pac-Man saliency maps showed agents tracking corridors rather than ghosts.
+All R² values here are out-of-sample (fit on even games, score on odd ones), but bin counts differ. Place (the
+lattice node, a joint x × y variable) has up to 252 bins and place × heading up to 1,008, while each single feature
+has ≤ 20.
+- Ms. Pac-Man's lattice node alone already beats every single feature, and adding her heading raises the median
+  further.
+- Many fc neurons therefore look like **place × heading cells** (cf. hippocampal place cells). Gradient boosting on
+  all 40 features still explains far more (median <!--n:appo_1111:median_all_disc-->0.72<!--/n-->).
+- Ghost-related variables, even as conjunctions, explain little.
+- This is reminiscent of [Greydanus et al. 2018](https://arxiv.org/abs/1711.00138), where several partially trained
+  A3C Ms. Pac-Man agents "appeared to be tracking corridors" rather than the ghosts. Attention agents in
+  [Mott et al. 2019](https://arxiv.org/abs/1906.02500), by contrast, scan the paths ahead for ghosts.
 
 This analysis was not preregistered and is evidence for a hypothesis to test, not a confirmed claim.
 
@@ -111,7 +121,14 @@ This analysis was not preregistered and is evidence for a hypothesis to test, no
 
 ## Learnings
 - Under a 40-feature, single-variable dictionary, the neurons of this reward-trained agent are **not** "already
-  clean": most are conjunctive. Goodfire's free-text visual labels can describe conjunctions ("dog heads in
-  profile"); a RAM-feature dictionary needs conjunctions to compete.
-- <!--n:appo_1111:dead-->145<!--/n--> of 512 fc units never fire on discovery data (dead units). They are excluded from H1 and listed in the
-  microscope.
+  clean". The exploratory analysis suggests they are conjunctive. Goodfire's free-text visual labels can name
+  conjunctions of properties; a RAM-feature dictionary needs conjunctions to compete.
+- Pellets left is the best single feature for <!--n:appo_1111:best_feat_pellets:random_dirs-->472 of 512<!--/n-->
+  random directions but only <!--n:appo_1111:best_feat_pellets:agent-->155 of 367<!--/n--> neurons (discovery
+  split-half, `results/claim_checks_appo_1111.json`). Dense mixtures pick up this slow global variable, which is why
+  random directions have a higher best single-feature R².
+- Alive units are sparse: the median one is active on <!--n:appo_1111:median_active-->1.0%<!--/n--> of in-control
+  steps.
+- <!--n:appo_1111:dead-->145<!--/n--> of 512 fc units are active on fewer than 0.1% of in-control discovery steps (the
+  preregistered alive rule); <!--n:appo_1111:never_fire-->39<!--/n--> of them never fire. They are excluded from H1. The
+  microscope shows only alive units; the others are listed as `dead_units` in `site/data/*.json`.

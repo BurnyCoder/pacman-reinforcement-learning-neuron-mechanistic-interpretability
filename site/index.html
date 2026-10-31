@@ -62,14 +62,14 @@ video, .media img { max-width: 100%; border-radius: 8px; border: 1px solid var(-
 <main>
   <header>
     <h1>Ms. Pac-Man Neuron Microscope</h1>
-    <p>Every neuron of a deep RL agent that learned Atari Ms. Pac-Man <b>from game reward only</b> (Sample Factory APPO, 2B steps, no imitation learning), audited Goodfire-style: top-activating frames, a ground-truth label from the console RAM, the neuron's vote on each action, and causal steering tests. Method, preregistration and code: <a href="https://github.com/BurnyCoder/pacman-reinforcement-learning-neuron-mechanistic-interpretability">GitHub repository</a>.</p>
+    <p>Every alive fc neuron (active on ≥ 0.1% of steps) of a deep RL agent that learned Atari Ms. Pac-Man <b>from game reward only</b> (Sample Factory APPO, 2B emulator frames ≈ 500M agent steps, no imitation learning), audited Goodfire-style: top-activating frames, a ground-truth label from the console RAM, the neuron's vote on each action, and causal steering tests. Method, preregistration and code: <a href="https://github.com/BurnyCoder/pacman-reinforcement-learning-neuron-mechanistic-interpretability">GitHub repository</a>.</p>
     <div class="controls"><label>Agent <select id="model"></select></label>
       <button id="theme" type="button" aria-label="Toggle dark mode">Toggle theme</button></div>
   </header>
   <section id="summary" class="tiles" aria-live="polite"></section>
   <section id="steering"></section>
   <h2>fc neurons</h2>
-  <p>Label = the single ground-truth feature that best predicts the neuron (out-of-sample R², 20-bin means). "One job" = all features together explain ≥ 30% of its variance and the best single feature explains ≥ 70% of that. Labels are correlational; only the steering section makes causal claims.</p>
+  <p>Label = the single ground-truth feature that best predicts the neuron (R² of bin means with ≤ 20 bins per feature, fitted on even discovery games and scored on odd ones). "One job" = all features together explain ≥ 30% of its variance and the best single feature explains ≥ 70% of that. Labels are correlational; only the steering section makes causal claims.</p>
   <div class="controls">
     <input id="q" type="search" placeholder="Filter by feature, e.g. danger" aria-label="Filter units by feature">
     <label>Family <select id="fam"><option value="">all</option></select></label>
@@ -79,7 +79,7 @@ video, .media img { max-width: 100%; border-radius: 8px; border: 1px solid var(-
   </div>
   <div id="grid" class="grid"></div>
   <h2>conv3 channels</h2>
-  <p>Within-cell AUROC: how well each channel's activation at a 7×7 position detects an object in that position's receptive field (0.5 = chance; location is controlled by comparing only within a cell).</p>
+  <p>Within-cell AUROC: how well each channel's activation at a 7×7 position detects an object in the central 16×16-pixel core of that position's 36×36-pixel receptive field, averaged over positions weighted by how often the object is there (0.5 = chance; location is controlled by comparing only within a cell).</p>
   <div class="scroll"><table id="conv"></table></div>
   <dialog id="dlg"></dialog>
 </main>
@@ -93,7 +93,7 @@ const FEAT = {
   dir_danger_left: "nearest dangerous ghost is left", dir_danger_down: "nearest dangerous ghost is down",
   d_edible1: "distance to nearest edible ghost", dir_edible_up: "edible ghost is up", dir_edible_right: "edible ghost is right",
   dir_edible_left: "edible ghost is left", dir_edible_down: "edible ghost is down", frightened: "ghosts frightened (edible)",
-  fright_timer: "frightened time left", n_edible: "# edible ghosts", d_pellet: "distance to nearest pellet",
+  fright_timer: "frightened timer byte (ram[116])", n_edible: "# edible ghosts", d_pellet: "distance to nearest pellet",
   dir_pellet_up: "nearest pellet is up", dir_pellet_right: "nearest pellet is right", dir_pellet_left: "nearest pellet is left",
   dir_pellet_down: "nearest pellet is down", n_pellets: "pellets left", d_power: "distance to nearest power pill",
   dir_power_up: "power pill is up", dir_power_right: "power pill is right", dir_power_left: "power pill is left",
@@ -130,7 +130,7 @@ function render() {
   const src = h1 ? h1.sets : s;
   const agent = src.agent, rnd = src.random_dirs, un = src.untrained;
   $("#summary").innerHTML =
-    tile(D.fc_units.length + " / 512", "fc neurons that ever fire (alive)") +
+    tile(D.fc_units.length + " / 512", "fc neurons active on ≥ 0.1% of steps (alive)") +
     tile(pct(agent.clean_frac), `alive neurons with one main job ${h1 ? "(held-out)" : "(discovery, exploratory)"}`) +
     tile(pct(rnd.clean_frac), "same score for random directions (control)") +
     tile(pct(un.clean_frac), "same score for an untrained network (control)");
@@ -152,7 +152,8 @@ function renderSteering() {
   }).join("");
   const vids = (c.candidates || []).map(r => `<figure class="media"><img src="media/${D.model}_${r.name}.gif" alt="Baseline (left) and steered (right) replay for ${r.label}" loading="lazy" onerror="this.parentElement.remove()"><figcaption class="note">${r.label}: baseline (left) vs steered (right), same game seed.</figcaption></figure>`).join("");
   $("#steering").innerHTML = `<h2>Steering (confirmatory, held-out games)</h2>
-    <div class="scroll"><table><thead><tr><th>intervention</th><th>primary metric</th><th>baseline → steered</th><th>Δ [95% CI]</th><th>Holm p</th><th>preregistered test</th></tr></thead><tbody>${rows}</tbody></table></div>${vids}`;
+    <div class="scroll"><table><thead><tr><th>intervention</th><th>primary metric</th><th>baseline → steered</th><th>Δ [95% CI]</th><th>Holm p</th><th>preregistered test</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="note">Holm p = 0.0002 is the floor of the 10,000-permutation test after Holm over two candidates. For agents 2222 and 3333 the fc-ablation rule's test is exploratory: the preregistration defines replication only for candidates that passed in agent 1111.</p>${vids}`;
 }
 
 function renderGrid() {
@@ -182,12 +183,12 @@ function openUnit(n) {
   const dmax = Math.max(...u.dla.map(Math.abs));
   $("#dlg").innerHTML = `<button class="close" onclick="dlg.close()">Close</button>
     <h2>fc neuron ${n} ${u.clean ? '<span class="badge clean">one job</span>' : ""}</h2>
-    <p><b>Label:</b> fires with ${u.sign < 0 ? "<i>low</i> " : ""}${FEAT[u.best] || u.best} (R² ${fmt(u.r2_best)}; all features together R² ${fmt(u.r2_all)}; runner-up: ${FEAT[u.second] || u.second}, R² ${fmt(u.r2_second)}). Active on ${pct(u.frac_active)} of steps; 99th percentile ${fmt(u.p99)}.</p>
+    <p><b>Label:</b> fires with ${u.sign < 0 ? "<i>low</i> " : ""}${FEAT[u.best] || u.best} (R² ${fmt(u.r2_best)}; all features together R² ${fmt(u.r2_all)}; runner-up: ${FEAT[u.second] || u.second}, R² ${fmt(u.r2_second)}). Active on ${pct(u.frac_active)} of in-control discovery steps; 99th percentile of its non-zero activations ${fmt(u.p99)}.</p>
     <div class="cols"><div class="pane"><h3>Positive pole: top 16 frames</h3><img src="${p}_top.webp" alt="Top-activating frames">
       <h3>Activation bands (top, 1–5%, 10–50%, bottom)</h3><img src="${p}_bands.webp" alt="Frames sampled from activation quantile bands"></div>
     <div class="pane"><h3>Best single features (R²)</h3>${bars(u.top_features.map(([k, v]) => [k, v]), 1, "seq")}
       <h3>Direct vote on actions (W<sub>π</sub> column)</h3>${bars(D.actions.map((a, i) => [a, u.dla[i]]), dmax, "div")}
-      <p class="note">Value-head weight ${fmt(u.w_value, 3)}. Because the policy head is linear and there is no RNN, turning this neuron up by x adds exactly x × these numbers to the action logits.</p>
+      <p class="note">Value-head weight ${fmt(u.w_value, 3)}. Because the policy head is linear and there is no RNN, raising this neuron's post-ReLU activation by x adds exactly x × these numbers to the action logits.</p>
       <h3>Negative pole: most suppressed (pre-ReLU)</h3><img src="${p}_neg.webp" alt="Most suppressing frames"></div></div>`;
   $("#dlg").showModal();
 }

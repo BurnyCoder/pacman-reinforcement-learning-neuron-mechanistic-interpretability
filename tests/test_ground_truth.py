@@ -91,3 +91,17 @@ def test_replay_is_deterministic_with_sticky_actions(played):
     out = replay(7, played["action"][:300], capture={0, 150, 299}, sticky=0.25)
     for t in (0, 150, 299):
         np.testing.assert_array_equal(out[t]["ram"], rams[t])
+
+
+def test_frightened_ticks_mask_upper_bits_and_dynamics():
+    """ram[116]: only the low six bits count down (upper bits change when ghosts are eaten), so the countdown helpers
+    must mask them; timer_dynamics reports start values (from 0) and drops over 4 steps of a running countdown."""
+    raw = np.array([0, 0, 61, 61, 60, 60, 59 | 64, 59 | 64, 58 | 64, 58 | 64, 0, 53, 53], np.uint8)
+    ram = np.zeros((len(raw), 128), np.uint8)
+    ram[:, 116] = raw
+    ticks = R.frightened_ticks(ram)
+    assert ticks.max() <= 63 and (ticks > 0).tolist() == (raw > 0).tolist()
+    assert R.frightened_timer(ram).max() == 59 | 64  # the raw byte is kept for the frozen feature
+    dyn = R.timer_dynamics(ticks)
+    assert dyn["starts"] == [61, 53]
+    assert set(dyn["drops"]) == {2}

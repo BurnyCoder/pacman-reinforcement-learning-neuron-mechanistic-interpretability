@@ -30,15 +30,20 @@ tags: [interpretability, reinforcement-learning, atari, ms-pacman, mechanistic-i
 Derived artefacts of a preregistered neuron-level interpretability and steering study of reward-trained
 (no imitation learning) Sample Factory APPO agents playing Atari Ms. Pac-Man.
 
-- `results/*.json`: every number reported in the study:
+- `results/*.json`: the analysis outputs from which the study's report generator (`pacneuron.report`) builds
+  every results table and inline number in the README, reports and paper:
   - fidelity, ground-truth validation;
   - audits (per fc unit: best feature, R², action votes, top-activating states);
-  - screens, pilots, confirmatory H1/H2 tests, replication.
-- `site_data/*.json`: per-unit data behind the interactive microscope.
-- `analysis/*.npz`: unit × feature R² matrices for the agent and controls, bootstrap draws, open-loop screen maps.
+  - screens, pilots, confirmatory H1/H2 tests, replication, exploratory claim checks.
 
-Top-activating frames are not stored. They are re-rendered by deterministic replay from (game seed, step) with
-the code at {GITHUB}. Agents:
+  Numbers inside the frozen preregistration and its addendum were written by hand before the results existed.
+- `site_data/*.json`: per-unit data behind the interactive microscope (alive fc units only).
+- `analysis/*.npz`: unit × feature R² matrices for the agent and controls from the exploratory discovery
+  split-half audit (not the held-out H1 test), bootstrap draws, open-loop screen maps.
+
+Top-activating frames are not stored here (the GitHub repository ships them as WebP grids under `site/img`). They
+can be re-rendered by deterministic replay from (game seed, step), which needs the recorded action sequences: run
+the collection phases of the code at {GITHUB} to regenerate them. Agents:
 {chr(10).join(f"- https://huggingface.co/{m.repo_id}" for m in MODELS.values())}
 """
 

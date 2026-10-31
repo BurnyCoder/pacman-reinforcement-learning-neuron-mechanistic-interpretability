@@ -85,25 +85,35 @@ def r2_scatter(sets: dict[str, tuple[np.ndarray, np.ndarray]], path: Path, title
 
 
 def effect_vs_null(cands: list[dict], path: Path, title: str, xlabel: str) -> None:
-    """Paired effect (95% CI) of each candidate vs the matched null distribution of random units (gray dots)."""
+    """Paired effect (95% CI, 50 games) of each candidate on its own row, and the matched null units' effects (20 games
+    each, gray dots) on the row below, so that no null point is hidden behind the candidate marker. The dashed line is
+    the null's 95th percentile in the predicted direction (preregistration §6 criterion 2), given as c["q95"]."""
     style()
-    fig, ax = plt.subplots(figsize=(5.8, 0.9 + 0.7 * len(cands)))
+    fig, ax = plt.subplots(figsize=(5.8, 1.1 + 1.0 * len(cands)))
+    ticks, labels = [], []
     for k, c in enumerate(cands):
-        y = len(cands) - 1 - k
+        y = 2 * (len(cands) - 1 - k) + 1
         null = np.asarray(c.get("null", []), float)
         if len(null):
-            jitter = np.random.default_rng(k).uniform(-0.12, 0.12, len(null))
-            ax.scatter(null, y + jitter, s=10, color=MUTED, alpha=0.6, label="null units" if k == 0 else None)
+            jitter = np.random.default_rng(k).uniform(-0.18, 0.18, len(null))
+            ax.scatter(null, y - 1 + jitter, s=10, color=MUTED, alpha=0.6, label="null units (20 games each)" if k == 0 else None)
+            ticks.append(y - 1)
+            labels.append(f"{len(null)} null units")
+        if c.get("q95") is not None:
+            ax.plot([c["q95"]] * 2, [y - 1.35, y + 0.35], color=INK2, lw=1, ls="--",
+                    label="null 95th percentile (predicted direction)" if k == 0 else None)
         lo, hi = c["ci"]
         ax.plot([lo, hi], [y, y], color=SERIES[0], lw=2)
         ax.scatter([c["delta"]], [y], s=40, color=SERIES[0], zorder=3, edgecolors=SURF, linewidths=1.5,
-                   label="candidate (95% CI)" if k == 0 else None)
+                   label="candidate (95% CI, 50 games)" if k == 0 else None)
+        ticks.append(y)
+        labels.append(c["label"])
     ax.axvline(0, color=BASE, lw=1)
-    ax.set_yticks(range(len(cands))[::-1], [c["label"] for c in cands])
+    ax.set_yticks(ticks, labels)
     ax.set_xlabel(xlabel)
     ax.grid(axis="y", visible=False)
-    ax.set_ylim(-0.6, len(cands) - 0.4)
-    ax.legend(loc="upper left", fontsize=8, frameon=True, facecolor=SURF, edgecolor=GRID)
+    ax.set_ylim(-0.7, 2 * len(cands) + 0.2)
+    ax.legend(loc="upper left", bbox_to_anchor=(0, -0.35), fontsize=8, frameon=False, ncol=1)
     ax.set_title(title, loc="left")
     save(fig, path)
 
@@ -170,7 +180,8 @@ def occlusion_overlay(frame: np.ndarray, occ: np.ndarray, path: Path, title: str
     """
     style()
     fig, ax = plt.subplots(figsize=(3.8, 4.6))
-    ax.imshow(frame, extent=(0, 160, 210, 0))
+    # gray background: the maze's own pink/blue would otherwise be confused with the red/blue diverging overlay
+    ax.imshow(frame.mean(-1), extent=(0, 160, 210, 0), cmap="gray", vmin=0, vmax=255)
     n = occ.shape[0]
     acc, cnt = np.zeros((84, 84)), np.zeros((84, 84))
     for a in range(n):
@@ -182,5 +193,6 @@ def occlusion_overlay(frame: np.ndarray, occ: np.ndarray, path: Path, title: str
     im = ax.imshow(m, extent=(0, 160, 210, 0), cmap=DIVERGING, vmin=-vmax, vmax=vmax, alpha=0.55)
     ax.axis("off")
     fig.colorbar(im, ax=ax, fraction=0.045, pad=0.02, label="activation drop when occluded")
-    ax.set_title(title, loc="left", fontsize=9)
+    ax.set_title(title + "\nocclusion map: mean over the unit's 50 top states,\ndrawn on its top state", loc="left",
+                 fontsize=9)
     save(fig, path)

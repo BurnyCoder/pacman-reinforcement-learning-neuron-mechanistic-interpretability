@@ -3,8 +3,10 @@
 Local: small numpy functions with no project dependencies (unit-tested on synthetic data in tests/test_stats.py).
 Global: steps within one game are strongly autocorrelated, so every uncertainty estimate resamples whole games
 (cluster bootstrap); paired steering comparisons use per-game differences between arms with the same game seed.
-References: Holm (1979) step-down FWER control; Benjamini & Hochberg (1995) FDR; Efron & Tibshirani (1993)
-percentile bootstrap; sign-flip permutation tests for paired designs (Good, "Permutation Tests", 2005).
+References: Holm (1979) step-down FWER control (https://www.jstor.org/stable/4615733); Benjamini & Hochberg (1995)
+FDR (https://doi.org/10.1111/j.2517-6161.1995.tb02031.x); Efron & Tibshirani (1993) percentile bootstrap; resampling
+whole games = cluster bootstrap (Field & Welsh 2007, https://doi.org/10.1111/j.1467-9868.2007.00593.x); sign-flip
+permutation tests for paired designs (Good, "Permutation Tests", 2005).
 """
 
 from __future__ import annotations
@@ -31,7 +33,9 @@ def paired_signflip_p(diffs: np.ndarray, sign: int = 1, n_perm: int = 10000, see
     """One-sided p-value that the mean paired difference is in direction `sign` (+1 or -1).
 
     Under H0 (no effect) each game's difference is symmetric around 0, so random sign flips give the null
-    distribution of the mean. p = (1 + #{null >= observed}) / (1 + n_perm), in the predicted direction.
+    distribution of the mean. p = (1 + #{null >= observed}) / (1 + n_perm), in the predicted direction (the +1 keeps
+    random-permutation p-values valid; Phipson & Smyth 2010, https://arxiv.org/abs/1603.05766). Its floor is
+    1 / (n_perm + 1), i.e. 0.0001 for 10,000 permutations.
     """
     d = sign * np.asarray(diffs, float)
     rng = np.random.default_rng(seed)

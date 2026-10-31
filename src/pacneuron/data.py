@@ -13,12 +13,13 @@ from pathlib import Path
 import numpy as np
 
 from pacneuron import maze as M
-from pacneuron.config import DATA_DIR
+from pacneuron.config import DATA_DIR, SPLIT_SUFFIX
 from pacneuron.features import compute_features, in_control
 
 
 def split_dir(model: str, split: str) -> Path:
-    d = DATA_DIR / "rollouts" / model / split
+    """DATA_DIR/rollouts/<model>/<split><SPLIT_SUFFIX> (suffix "_nosticky" when STICKY=0, else empty)."""
+    d = DATA_DIR / "rollouts" / model / f"{split}{SPLIT_SUFFIX}"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

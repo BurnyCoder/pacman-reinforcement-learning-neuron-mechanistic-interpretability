@@ -111,6 +111,10 @@ def r2_single(A_fit, F_fit, A_ev, F_ev, game_ev, n_games) -> tuple[R2Stats, list
 
 
 def _fit_one(X_fit, y_fit, X_ev):
+    # Histogram gradient boosting (scikit-learn's LightGBM-style estimator, Ke et al. 2017,
+    # https://papers.nips.cc/paper/6907-lightgbm-a-highly-efficient-gradient-boosting-decision-tree); defaults
+    # include early stopping on a 10% validation split above 10,000 samples
+    # (https://scikit-learn.org/stable/modules/ensemble.html#histogram-based-gradient-boosting).
     m = HistGradientBoostingRegressor(max_iter=200, random_state=0)
     return m.fit(X_fit, y_fit).predict(X_ev).astype(np.float32)
 
@@ -143,7 +147,10 @@ def alive(A: np.ndarray, frac: float = ALIVE_FRAC) -> np.ndarray:
 
 
 def random_directions(n_units: int, seed: int = 0) -> np.ndarray:
-    """[U, U] random orthonormal basis (QR of a Gaussian matrix, sign-fixed): control (a) projections."""
+    """[U, U] random orthonormal basis (QR of a Gaussian matrix, sign-fixed): control (a) projections.
+
+    Fixing the signs by diag(R) makes Q Haar-distributed (Mezzadri 2007, https://arxiv.org/abs/math-ph/0609050).
+    """
     q, r = np.linalg.qr(np.random.default_rng(seed).normal(size=(n_units, n_units)))
     return (q * np.sign(np.diag(r))).astype(np.float32)
 

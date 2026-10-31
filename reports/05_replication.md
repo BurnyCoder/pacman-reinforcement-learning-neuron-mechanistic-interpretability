@@ -12,13 +12,17 @@ rule*, applied to another agent's own discovery data, find a unit whose steering
   - audit;
   - open-loop screens.
 - `derive_candidates` then applies the rules frozen in `results/candidates.json` **without human choice**:
-  - **fc ablation rule:** the alive fc unit whose zero-ablation most reduces P(move toward the nearest edible
-    ghost) in the open-loop screen. Primary metric: ghosts eaten per power pill (−). Secondary metric: the
-    matching edible-ghost direction and action set.
+  - **fc ablation rule:** the fc unit whose zero-ablation most reduces P(move toward the nearest edible ghost) in
+    the open-loop screen. The code does not filter for alive units, but both selected units are alive. Primary
+    metric: ghosts eaten per power pill (−). Secondary metric: the edible-ghost direction with the unit's highest
+    single-feature R², and its action set.
   - **conv3 patch rule:** the (channel, cell) with the most negative open-loop attraction at the p99 dose.
     Primary metric: approach rate to that cell's target node (−).
 - The derived file `results/candidates_<agent>.json` is committed, and only then are the agent's held-out arms
   run, with the same nulls and tests as seed 1111.
+- **Verdict.** A rule replicates if its unit passes H2 criteria 1–2 in both agents, after a further Holm correction
+  over the two agents (preregistration §7). §7 defines H3 only for candidates that passed H2. fc 453 failed H2, so
+  the fc-ablation rule's replication is exploratory.
 
 ## Results
 
@@ -30,6 +34,8 @@ rule*, applied to another agent's own discovery data, find a unit whose steering
 | zero-ablate the fc unit most needed for approaching edible ghosts | appo_3333 | fc neuron 351 zero-ablated | 0.190 [0.071, 0.301] | 0.9992 | 99 of 99 | no |
 | set the most repelling conv3 (channel, cell) to its p99 | appo_2222 | conv3 channel 3 set to its p99 at cell (0, 0) | -0.034 [-0.043, -0.026] | 0.0002 | 0 of 63 | yes |
 | set the most repelling conv3 (channel, cell) to its p99 | appo_3333 | conv3 channel 46 set to its p99 at cell (5, 6) | -0.216 [-0.232, -0.200] | 0.0002 | 0 of 63 | yes |
+
+A rule replicates if its unit passes H2 criteria 1-2 in both agents and the within-agent Holm p-values stay < 0.05 after a further Holm correction over the two agents (preregistration §7, "Holm over seeds"). Preregistration §7 defines H3 only for candidates that passed H2; fc 453 failed H2 in agent 1111, so the fc-ablation rule's replication is exploratory. p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test (1/10,001); 0.0002 is that floor after Holm over 2 tests, so it means p ≤ that value.
 <!-- END:h3 -->
 
 - "No-go zone" rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n-->.
@@ -39,9 +45,9 @@ rule*, applied to another agent's own discovery data, find a unit whose steering
 <!-- BEGIN:models -->
 | agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (no sticky) |
 |---|---|---|---|---|---|---|---|
-| [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 4082 ± 2032 | 6288 ± 1955 |
-| [appo_2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 5161 ± 2056 | 9056 ± 2544 |
-| [appo_3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333) | Nature-CNN: conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with MsPacmanNoFrameskip-v4 | 100 | 5056 ± 2358 | 6808 ± 1183 |
+| [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with MsPacmanNoFrameskip-v4 | 100 | 4082 ± 2032 | 6288 ± 1955 |
+| [appo_2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with MsPacmanNoFrameskip-v4 | 100 | 5161 ± 2056 | 9056 ± 2544 |
+| [appo_3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with MsPacmanNoFrameskip-v4 | 100 | 5056 ± 2358 | 6808 ± 1183 |
 <!-- END:models -->
 
 One-job audit (discovery, exploratory):
@@ -63,7 +69,7 @@ One-job test on held-out games (H1, confirmatory):
 | non-negative unit mixtures (control b) | 512 | 1.4% [1.2%, 1.6%] | 0.770 | 0.046 |
 | untrained network (control c) | 500 | 10.2% [6.6%, 13.2%] | 0.550 | 0.091 |
 
-H1 test (agent minus random directions): -0.0% [-0.3%, 0.5%]; H1 not supported.
+H1 test (agent minus random directions): 0.1% [-0.3%, 0.5%]; H1 not supported.
 <!-- END:h1_appo_2222 -->
 
 Robustness of H1 (start-state clusters, threshold sweep):
@@ -92,6 +98,8 @@ Steering (held-out, confirmatory):
 |---|---|---|---|---|---|---|
 | fc neuron 379 zero-ablated | ghosts_per_pill (−) | 0.463 → 0.362 | -0.101 [-0.167, -0.036] | 0.0025 | yes (null q95 0.027) | pass |
 | conv3 channel 3 set to its p99 at cell (0, 0) | approach (−) | 0.430 → 0.396 | -0.034 [-0.043, -0.026] | 0.0002 | yes (null q95 0.007) | pass |
+
+p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test (1/10,001); 0.0002 is that floor after Holm over 2 tests, so it means p ≤ that value.
 <!-- END:steer_appo_2222 -->
 
 Attribution of the rule-selected units:
@@ -115,6 +123,8 @@ Off-target effects (two-sided, BH-corrected):
 | conv3 channel 3 set to its p99 at cell (0, 0) | pellets_per_1k | -5.60 [-14.44, 3.12] | 0.2257 | 0.2539 |
 | conv3 channel 3 set to its p99 at cell (0, 0) | ghosts_per_pill | 0.07 [-0.12, 0.30] | 0.5110 | 0.5110 |
 | conv3 channel 3 set to its p99 at cell (0, 0) | in_control | -1015 [-1205, -838] | 0.0001 | 0.0001 |
+
+p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test (1/10,001), so it means p ≤ that value.
 <!-- END:offtarget_appo_2222 -->
 
 ### Agent 3333
@@ -166,6 +176,8 @@ Steering (held-out, confirmatory):
 |---|---|---|---|---|---|---|
 | fc neuron 351 zero-ablated | ghosts_per_pill (−) | 0.660 → 0.850 | 0.190 [0.071, 0.301] | 0.9992 | no (null q95 0.019) | fail |
 | conv3 channel 46 set to its p99 at cell (5, 6) | approach (−) | 0.440 → 0.224 | -0.216 [-0.232, -0.200] | 0.0002 | yes (null q95 0.012) | pass |
+
+p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test (1/10,001); 0.0002 is that floor after Holm over 2 tests, so it means p ≤ that value.
 <!-- END:steer_appo_3333 -->
 
 Attribution of the rule-selected units:
@@ -189,6 +201,8 @@ Off-target effects (two-sided, BH-corrected):
 | conv3 channel 46 set to its p99 at cell (5, 6) | pellets_per_1k | -7.35 [-15.49, 0.77] | 0.0868 | 0.0868 |
 | conv3 channel 46 set to its p99 at cell (5, 6) | ghosts_per_pill | 0.42 [0.31, 0.56] | 0.0001 | 0.0001 |
 | conv3 channel 46 set to its p99 at cell (5, 6) | in_control | -1347 [-1537, -1165] | 0.0001 | 0.0001 |
+
+p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test (1/10,001), so it means p ≤ that value.
 <!-- END:offtarget_appo_3333 -->
 
 ## Interpretation
@@ -199,21 +213,28 @@ Off-target effects (two-sided, BH-corrected):
   - agent 2222: channel 3 at the top-left cell;
   - agent 3333: channel 46 at the same lower-right cell as agent 1111's channel 18.
 - **Effect sizes.** They vary several-fold between agents; agent 3333's is the largest (see the table). In each
-  agent the unit is stronger than all 63 other channels at the same position.
-- **Side effects.** The repelled agent abandons part of the maze and dies more. This is a reliable, reproducible
-  product of training, not an accident of one network.
+  agent the unit is stronger than all 63 other channels at the same position, each set to its own p99.
+- **Side effects.** In every agent the steered agent dies more often per 1,000 steps (off-target tables).
+- **How general.** The frozen rule found such a unit in all three independently trained agents. This suggests a
+  regular product of this training recipe rather than an accident of one network. Three agents from one recipe
+  cannot establish more.
 - **What it does not tell us.** *Which* channel and cell does this differs between networks; no unit
   correspondence is implied.
 
 ### Ghost-hunting ablation rule: does not replicate
 - **Agent 2222.** The rule-selected fc unit (379) passes: ablating it lowers ghosts eaten per power pill, beyond
-  all 99 null units.
+  all 99 null units. Its predicted local effect, however, is small: P(move up | nearest edible ghost is up)
+  <!--n:appo_2222:fc379_ablate:sec-->0.549 → 0.526 (Δ -0.023 [-0.045, 0.001])<!--/n-->.
 - **Agent 3333.** The rule-selected unit (351) moves the primary metric in the **opposite** direction: ghosts eaten
-  per pill rise. Its predicted local effect is still there: P(move down | nearest edible ghost is down) drops
-  sharply (`results/confirm_appo_3333.json`, secondary metric).
-- **Agent 1111.** The original candidate (453) showed the same local effect, with a non-significant primary
-  outcome.
-- **Conclusion.** Ablating these fc units has a causally specific local effect: fewer moves in the unit's voted
-  direction toward edible ghosts. But their "edible ghost is in direction d" labels do not survive confound
-  control (see the attribution tables). Their effect on the *outcome* (ghosts eaten) is not consistent: removing
-  one direction's vote changes the route and can even increase ghost eating.
+  per pill rise. Its predicted local effect is still there: P(move down | nearest edible ghost is down)
+  <!--n:appo_3333:fc351_ablate:sec-->0.476 → 0.307 (Δ -0.169 [-0.188, -0.149])<!--/n-->.
+- **Agent 1111.** The original candidate (453) showed a strong local effect
+  (<!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n-->), with a non-significant
+  primary outcome.
+- **Conclusion.**
+  - In two of the three agents, ablating the selected fc unit strongly reduces moves in its voted direction toward
+    edible ghosts. This is a secondary metric with no null comparison, so its specificity is untested.
+  - The units' "edible ghost is in direction d" labels do not survive confound control (see the attribution
+    tables).
+  - Their effect on the *outcome* (ghosts eaten) is not consistent. Removing one direction's vote appears to change
+    the route and can even increase ghost eating.
