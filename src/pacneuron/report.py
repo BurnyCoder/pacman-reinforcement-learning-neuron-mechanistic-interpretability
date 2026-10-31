@@ -1,9 +1,10 @@
-"""Regenerate every results table, inline number and figure from results/*.json (no hand-typed numbers).
+"""Regenerate every results table, inline number and static figure from results/*.json.
 
 Local: builds markdown tables (block markers `<!-- BEGIN:<key> -->...<!-- END:<key> -->`) and inline numbers
 (`<!--n:<key>-->value<!--/n-->`) and PNG figures, then rewrites README.md, reports/*.md and paper/paper.md.
-Global: `uv run python -m pacneuron.pipeline --phase report` is the single command that refreshes all numbers;
-analysis phases only write JSON.
+Global: `uv run python -m pacneuron.pipeline --phase report` is the single command that refreshes all marked numbers;
+analysis phases only write JSON. Not produced here: videos (`videos` phase), paper.pdf (scripts/build_paper.py), and
+the hand-written numbers of the frozen preregistration files. Occlusion overlays need DATA_DIR/analysis/topframe_*.npy.
 """
 
 from __future__ import annotations
@@ -39,6 +40,13 @@ def _pct(x):
     return "–" if x is None else f"{100 * x:.1f}%"
 
 
+def p_floor_note(holm_k: int | None = None) -> str:
+    """Footnote for tables whose p-values come from the 10,000-permutation sign-flip test (stats.paired_signflip_p)."""
+    extra = f"; {_f(holm_k / 10001, 4)} is that floor after Holm over {holm_k} tests" if holm_k else ""
+    return (f"p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test "
+            f"(1/10,001){extra}, so it means p ≤ that value.")
+
+
 def inject(text: str, key: str, body: str) -> str:
     pat = re.compile(rf"(<!-- BEGIN:{re.escape(key)} -->)(.*?)(<!-- END:{re.escape(key)} -->)", re.S)
     return pat.sub(lambda m: f"{m.group(1)}\n{body.strip()}\n{m.group(3)}", text)
@@ -60,9 +68,10 @@ def models_table() -> str:
         r = _load(f"collect_{spec.name}_discovery")
         if r:
             s = np.array(r["scores"])
-            rows.append(f"| [{spec.name}](https://huggingface.co/{spec.repo_id}) | Nature-CNN: conv 32/64/64 -> fc 512 "
+            rows.append(f"| [{spec.name}](https://huggingface.co/{spec.repo_id}) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 "
                         f"(ReLU) -> linear policy (9) + value | {n_params:,} | APPO (Sample Factory 2.0), maximise "
-                        f"clipped game reward, gamma 0.99, no imitation | 2B env steps of interaction with "
+                        f"clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at "
+                        f"frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with "
                         f"MsPacmanNoFrameskip-v4 | {r['games']} | {s.mean():.0f} ± {s.std(ddof=1):.0f} | "
                         f"{spec.reported_mean_reward:.0f} ± {spec.reported_std_reward:.0f} |")
     return "\n".join(rows)
@@ -75,7 +84,7 @@ def clean_table(src: dict, label: str) -> str:
         if k in src:
             v = src[k]
             ci = v.get("ci")
-            cis = f" [{_pct(ci[0])}, {_pct(ci[1])}]" if ci else ""
+            cis = f" [{_pct(ci[0])}, {_pct(ci[1])}]" if ci else " [CI not computed in this run]"
             rows.append(f"| {nm} | {v['units']} | {_pct(v['clean_frac'])}{cis} | {_f(v['median_r2_all'])} | "
                         f"{_f(v['median_best_r2'])} |")
     return "\n".join(rows)
@@ -149,8 +158,10 @@ def fidelity_table(r: dict) -> str:
     return "\n".join(["| check | value |", "|---|---|",
                       f"| golden trajectory steps (incl. {r['life_losses']} life losses and game over) | {r['golden_steps']} |",
                       f"| steps with any observation pixel mismatch | {r['obs_mismatched_steps']} |",
-                      f"| max abs. logit difference | {r['max_abs_logit_diff']:.1e} |",
-                      f"| max abs. value difference | {r['max_abs_value_diff']:.1e} |",
+                      f"| max abs. logit difference (CPU) | {r['max_abs_logit_diff']:.1e} |",
+                      f"| max abs. value difference (CPU) | {r['max_abs_value_diff']:.1e} |",
+                      *([f"| max abs. logit difference on GPU ({r['gpu']}, cuDNN TF32 {'on' if r['cudnn_allow_tf32'] else 'off'}, "
+                         f"as in data collection) | {r['max_abs_logit_diff_gpu']:.1e} |"] if "max_abs_logit_diff_gpu" in r else []),
                       f"| reference stack | {r['reference_stack']} |"])
 
 
@@ -160,8 +171,14 @@ def ground_truth_table(r: dict) -> str:
                       f"| RAM edible bit (bit 7 of ram[1+i]) vs blue sprite pixels, per ghost-step | {_pct(r['edible_bit_vs_blue_pixels_agreement'])} |",
                       f"| frightened timer ram[116] > 0 vs any ghost edible | {_pct(r['timer_vs_any_edible_agreement'])} |",
                       f"| eaten pellets at Ms. Pac-Man's lattice node ({r['pellet_events']} events) | {_pct(r['pellet_eaten_at_player_node'])} |",
-                      f"| steps in control (moving; excludes death, ready and level transitions) | {_pct(r['in_control_fraction'])} |",
-                      f"| distinct maze layouts seen | {r['maze_layouts']} |"])
+                      f"| steps in control (position changed between t−1 and t or t and t+1; excludes death, ready, level transitions and standstills) | {_pct(r['in_control_fraction'])} |",
+                      f"| distinct maze layouts seen | {r['maze_layouts']} |",
+                      *([f"| edible-bit vs blue-pixel disagreements ({r['edible_disagreements']} ghost-steps): bit set but no blue pixels | {_pct(r['disagree_bit_without_blue'])} |",
+                         f"| ... median countdown (low 6 bits of ram[116]) at a disagreement / share at ≤ 10 (all edible ghost-steps: {_pct(r['edible_share_ticks_le_10'])}) | {r['disagree_median_ticks']:.0f} / {_pct(r['disagree_share_ticks_le_10'])} |",
+                         f"| countdown start value when a pill is eaten in normal mode ({r['timer_starts']} pills) | {r['timer_start_min']}–{r['timer_start_max']} |",
+                         f"| countdown drop per 4 agent steps (modal value, share) | {r['timer_drop_mode_per_4_steps']} ({_pct(r['timer_drop_mode_share'])}) |",
+                         f"| frightened steps with the upper bits of ram[116] set | {_pct(r['timer_upper_bits_share_of_frightened_steps'])} |"]
+                        if "edible_disagreements" in r else [])])
 
 
 def conjunction_table(r: dict) -> str:
@@ -200,11 +217,22 @@ def generate() -> None:
         blocks["fidelity"] = fidelity_table(fid)
         nums["fid_logit"] = f"{fid['max_abs_logit_diff']:.1e}"
         nums["fid_steps"] = str(fid["golden_steps"])
+        if "max_abs_logit_diff_gpu" in fid:
+            nums["fid_logit_gpu"] = f"{fid['max_abs_logit_diff_gpu']:.1e}"
     for spec in MODELS.values():
         name = spec.name
         if gt := _load(f"ground_truth_{name}"):
             blocks[f"ground_truth_{name}"] = ground_truth_table(gt)
             nums[f"{name}:edible_agree"] = _pct(gt["edible_bit_vs_blue_pixels_agreement"])
+            if "edible_disagreements" in gt:
+                nums[f"{name}:gt_bit_without_blue"] = _pct(gt["disagree_bit_without_blue"])
+                nums[f"{name}:gt_dis_median_ticks"] = f"{gt['disagree_median_ticks']:.0f}"
+                nums[f"{name}:gt_dis_le10"] = _pct(gt["disagree_share_ticks_le_10"])
+                nums[f"{name}:gt_edible_le10"] = _pct(gt["edible_share_ticks_le_10"])
+                nums[f"{name}:gt_timer_start"] = f"{gt['timer_start_min']}–{gt['timer_start_max']}"
+                nums[f"{name}:gt_timer_drop"] = str(gt["timer_drop_mode_per_4_steps"])
+                nums[f"{name}:gt_timer_upper"] = _pct(gt["timer_upper_bits_share_of_frightened_steps"])
+                nums[f"{name}:gt_timer_agree"] = f"{100 * gt['timer_vs_any_edible_agreement']:.2f}%"
         if cj := _load(f"conjunctions_{name}"):
             blocks[f"conjunctions_{name}"] = conjunction_table(cj)
             nums[f"{name}:place_heading_median"] = _f(cj["models"]["place x heading"]["median_r2"], 2)
@@ -224,12 +252,14 @@ def generate() -> None:
         if ds := _load(f"dose_screen_{name}"):
             for lab, v in ds["doses"].items():
                 nums[f"{name}:dose:{lab}"] = f"{100 * v['strongest_repel']:+.1f} pp"
+                nums[f"{name}:dose_unit:{lab}"] = f"channel {v['channel']} at ({v['cell'][0]}, {v['cell'][1]})"
         if sc := _load(f"screen_{name}"):
             blocks[f"screen_{name}"] = screen_table(sc)
         st, st0 = _load(f"stochasticity_{name}"), _load(f"stochasticity_{name}_nosticky")
         if st and st0:
             nums[f"{name}:div_nosticky"] = f"{st0['median_divergence']:.0f}"
             nums[f"{name}:div_sticky"] = f"{st['median_divergence']:.0f}"
+            nums[f"{name}:distinct_starts"] = str(st["distinct_start_states"])
         co, co0 = _load(f"collect_{name}_discovery"), _load(f"collect_{name}_discovery_nosticky")
         if co:
             nums[f"{name}:score_sticky"] = f"{np.mean(co['scores']):.0f}"
@@ -239,6 +269,10 @@ def generate() -> None:
             al = [u for u in audit["fc_units"] if u["alive"]]
             nums[f"{name}:alive"] = str(len(al))
             nums[f"{name}:dead"] = str(len(audit["fc_units"]) - len(al))
+            nums[f"{name}:never_fire"] = str(sum(u["frac_active"] == 0 for u in audit["fc_units"]))
+            nums[f"{name}:median_active"] = _pct(float(np.median([u["frac_active"] for u in al])))
+            for u in audit["fc_units"]:  # activity of the units named in the text (candidates, positive control)
+                nums[f"{name}:fc{u['unit']}:active"] = _pct(u["frac_active"])
             obj = [(v, k, c["channel"]) for c in audit["conv3_channels"] for k, v in c["auroc"].items() if v == v]
             v, k, c = max(obj)
             nums[f"{name}:c3_best_obj"] = f"{v:.2f} (channel {c}, {k})"
@@ -252,7 +286,9 @@ def generate() -> None:
             for k in NAMES:
                 nums[f"{name}:h1_{k}"] = _pct(h1["sets"][k]["clean_frac"])
             dv = h1["sets"]["agent"]["diff_vs_random_dirs"]
-            nums[f"{name}:h1_diff"] = f"{_pct(dv['mean'])} [{_pct(dv['ci'][0])}, {_pct(dv['ci'][1])}]"
+            obs = h1["sets"]["agent"]["clean_frac"] - h1["sets"]["random_dirs"]["clean_frac"]  # observed difference
+            nums[f"{name}:h1_diff"] = f"{_pct(obs)} [{_pct(dv['ci'][0])}, {_pct(dv['ci'][1])}]"
+            nums[f"{name}:n_start_groups"] = str(h1["n_start_groups"])
             nums[f"{name}:h1_verdict"] = "supported" if h1["H1_supported"] else "not supported"
             blocks[f"h1robust_{name}"] = h1_robustness_table(h1)
             for k in ("agent", "random_dirs"):
@@ -280,10 +316,40 @@ def generate() -> None:
                 for f, d in v.get("label_checks", {}).items():
                     nums[f"{name}:{cname}:auroc:{f}"] = _f(d["stratified_auroc"], 2)
                     nums[f"{name}:{cname}:uniq:{f}"] = _f(v["unique_r2"].get(f), 3)
+        if cc := _load(f"claim_checks_{name}"):
+            for k, v in cc["best_features"].items():
+                top, cnt = v["top"][0]
+                nums[f"{name}:best_feat:{k}"] = f"{top} for {cnt} of {v['units']}"
+                n_pel = dict(v["top"]).get("n_pellets", 0)
+                nums[f"{name}:best_feat_pellets:{k}"] = f"{n_pel} of {v['units']}"
+            for cname, v in cc["candidates"].items():
+                key = f"{name}:{cname}"
+                nums[f"{key}:fright_active"] = _pct(v["frightened_share_when_active"])
+                nums[f"{key}:fright_base"] = _pct(v["frightened_base_rate"])
+                nums[f"{key}:near_peak"] = f"{_pct(v['player_near_peak_share'])} of its {v['occlusion_top_states']} top states"
+                nums[f"{key}:peak_dist"] = f"{v['player_to_peak_median_px']:.1f} px"
+                nums[f"{key}:top_repeat"] = (f"{_pct(v['top_states_share_within_10_steps_of_median'])} of them within 10 steps "
+                                             f"of step {v['top_states_step_median']:.0f}, from {v['top_states_distinct_games']} games")
+            m = cc["fright_timer_mask"]
+            nums[f"{name}:mask_max_gain"] = _f(m["max_gain"], 3)
+            nums[f"{name}:mask_beats_best"] = str(m["units_where_masked_beats_best_feature"])
+            nums[f"{name}:mask_newly_clean"] = str(m["units_newly_clean_if_masked"])
+        if aa := _load(f"aa_control_{name}"):
+            nums[f"{name}:aa_identical"] = f"{aa['identical_action_sequences']} of {aa['games']}"
         if ot := _load(f"offtarget_{name}"):
-            blocks[f"offtarget_{name}"] = offtarget_bh_table(ot)
+            blocks[f"offtarget_{name}"] = offtarget_bh_table(ot) + NL + NL + p_floor_note()
         if conf := _load(f"confirm_{name}"):
-            blocks[f"steer_{name}"] = steering_table(conf)
+            note = p_floor_note(len(conf["candidates"]))
+            pc = conf.get("positive_control")
+            au = _load(f"audit_{name}")
+            if pc and au:
+                cand = _load("candidates") or {}
+                n_pc = (cand.get("positive_control") or {}).get("spec", {}).get("units", [None])[0]
+                fa = next((u["frac_active"] for u in au["fc_units"] if u["unit"] == n_pc), None)
+                note += (f" The positive control's frozen label says \"constant logit bias\": clamping unit n to v shifts the "
+                         f"logits by (v − h_n(s))·W_π[:, n], which is constant only on steps where the unit is inactive "
+                         f"(fc {n_pc}: active on {_pct(fa)} of in-control discovery steps).")
+            blocks[f"steer_{name}"] = steering_table(conf) + NL + NL + note
             nums[f"{name}:h2_verdict"] = "supported" if conf["H2_supported"] else "not supported"
             for r in conf["candidates"]:
                 e = r["effects"][r["metric"]]
@@ -299,6 +365,8 @@ def generate() -> None:
                     nums[f"{key}:null_mean"] = _f(float(nd.mean()))
                     nums[f"{key}:null_n"] = str(len(nd))
                     nums[f"{key}:null_ge"] = str(int((r["sign"] * nd >= r["sign"] * e["delta"]).sum()))
+                    nums[f"{key}:null_best"] = _f(float(nd[np.argmax(r["sign"] * nd)]), 4)
+                    nums[f"{key}:delta4"] = _f(e["delta"], 4)
                 for k2 in ("return", "deaths_per_1k", "pellets_per_1k"):
                     x = r["effects"][k2]
                     if "delta" in x:
@@ -306,7 +374,8 @@ def generate() -> None:
                 if r.get("secondary") and "delta" in r["secondary"]:
                     s2 = r["secondary"]
                     nums[f"{key}:sec"] = f"{_f(s2['base_mean'])} → {_f(s2['arm_mean'])} (Δ {_f(s2['delta'])} [{_f(s2['ci'][0])}, {_f(s2['ci'][1])}])"
-                viz.effect_vs_null([{"label": r["label"], "delta": e["delta"], "ci": e["ci"], "null": r["null_deltas"]}],
+                viz.effect_vs_null([{"label": r["label"], "delta": e["delta"], "ci": e["ci"], "null": r["null_deltas"],
+                                     "q95": r["sign"] * r["null_q95_signed"]}],
                                    FIGURES_DIR / f"steer_{name}_{r['name']}.png", f"{name}: {r['label']}",
                                    f"Δ {r['metric']} (steered − baseline, paired by game seed)")
     # H3 (preregistration §7): a frozen rule replicates if the rule-selected unit passes criteria 1-2 in BOTH
@@ -334,7 +403,11 @@ def generate() -> None:
         if len(ok) == 2:
             verdict[rule] = all(ok) and bool((holm(ps) < 0.05).all())
             nums[f"h3:{rule}"] = "replicates" if verdict[rule] else "does not replicate"
-    blocks["h3"] = "\n".join(rows)
+    blocks["h3"] = "\n".join(rows) + NL + NL + (
+        "A rule replicates if its unit passes H2 criteria 1-2 in both agents and the within-agent Holm p-values stay "
+        "< 0.05 after a further Holm correction over the two agents (preregistration §7, \"Holm over seeds\"). "
+        "Preregistration §7 defines H3 only for candidates that passed H2; fc 453 failed H2 in agent 1111, so the "
+        "fc-ablation rule's replication is exploratory. " + p_floor_note(2))
     for path in _targets():
         if path.exists():
             text = path.read_text(encoding="utf-8")

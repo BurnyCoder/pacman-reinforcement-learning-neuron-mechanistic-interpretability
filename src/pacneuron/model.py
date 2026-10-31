@@ -2,9 +2,12 @@
 
 Local: `SFActorCritic` reproduces the exact forward pass of the pretrained APPO agents and exposes
 every activation site (conv1-3, fc pre/post) plus an `edit` callback for interventions.
-Global: Sample Factory itself cannot run on native Windows, so this module + `load_sf_checkpoint`
-(strict key/shape mapping) is how the rest of the project runs the agent; fidelity is verified
-against golden logits produced by real Sample Factory (tests/test_model.py).
+Global: Sample Factory 2.0.x has no native Windows support ("There is no Windows support at this time",
+https://www.samplefactory.dev/01-get-started/installation/), so this module + `load_sf_checkpoint` (strict key/shape
+mapping) is how the rest of the project runs the agent; fidelity is verified against golden observations, logits
+and values produced by real Sample Factory 2.0.3 (tests/test_fidelity.py, CPU).
+Sample Factory and its APPO: Petrenko et al. 2020, https://arxiv.org/abs/2006.11751. The conv torso is the Nature
+DQN architecture (Mnih et al. 2015, https://www.nature.com/articles/nature14236).
 
 Sources (Sample Factory, MIT):
 - conv stack: sample_factory/model/encoder.py, convnet_atari = [[C,32,8,4],[32,64,4,2],[64,64,3,1]],
@@ -119,7 +122,9 @@ def orthogonal_init_like(model: SFActorCritic, seed: int) -> SFActorCritic:
     """Untrained control network: same architecture and the *trained* obs normaliser, fresh weights.
 
     Sample Factory cfg uses policy_initialization=orthogonal with policy_init_gain=1.0 and zero biases
-    (sample_factory/model/model_utils.py / actor_critic.py initialize_weights).
+    (sample_factory/model/model_utils.py / actor_critic.py initialize_weights). Orthogonal init: Saxe et al. 2014,
+    https://arxiv.org/abs/1312.6120. The same `seed` is used for every agent, so the three agents' untrained
+    controls share weights (only the copied observation normaliser differs).
     """
     torch.manual_seed(seed)
     fresh = SFActorCritic(n_actions=model.policy.out_features)

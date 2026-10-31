@@ -11,7 +11,9 @@ NoopResetEnv / MaxAndSkipEnv / EpisodicLifeEnv / ClipRewardEnv are ported verbat
 sample_factory/envs/env_wrappers.py (themselves from CleanRL / Stable-Baselines3).
 Resize/Grayscale reproduce gym 0.26 semantics with OpenCV: cv2.resize(..., INTER_AREA) then
 cv2.cvtColor(RGB2GRAY) (https://github.com/openai/gym/blob/0.26.2/gym/wrappers/gray_scale_observation.py);
-gymnasium>=1.0 changed grayscale to float weights, which would shift input pixels, so we do not use it.
+gymnasium>=1.0's GrayscaleObservation instead computes np.sum(obs * [0.2125, 0.7154, 0.0721]).astype(uint8)
+(different weights, truncation; gymnasium/wrappers/transform_observation.py), which would shift input pixels, so we
+do not use it.
 """
 
 from __future__ import annotations
