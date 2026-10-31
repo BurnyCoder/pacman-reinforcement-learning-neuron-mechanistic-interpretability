@@ -1,0 +1,84 @@
+{
+ "exploratory": true,
+ "lock": {
+  "reports/preregistration.md": "a5593d6d68798ef53f5d22ab609893ef93e2a945bf3eb3e772d0f3fdfbcddf44",
+  "reports/preregistration_addendum.md": "b87471bf31e575d7fed63affb4f8fa273d883a43cc9d5674ff40715be668c6c6",
+  "results/candidates.json": "7a988d7a37329751f2b63a9e8d852a98ea15b5184e86c5390d65d3f68109d144",
+  "frozen_commit": "9ac548b643fa3d7cd388af325f26915c78e5ecb8"
+ },
+ "games": 50,
+ "identical_action_sequences": 50,
+ "median_first_divergence_step": 1689.0,
+ "first_divergence_steps": [
+  2625,
+  838,
+  1688,
+  1786,
+  1574,
+  884,
+  2010,
+  1548,
+  1739,
+  1402,
+  1672,
+  2022,
+  945,
+  2691,
+  924,
+  3222,
+  3359,
+  1623,
+  1690,
+  1936,
+  1560,
+  1830,
+  1006,
+  1428,
+  1017,
+  1642,
+  1711,
+  3681,
+  1466,
+  1436,
+  1164,
+  1795,
+  2067,
+  3262,
+  1674,
+  2273,
+  1769,
+  998,
+  1883,
+  1803,
+  2458,
+  2772,
+  1489,
+  3476,
+  1674,
+  1970,
+  1599,
+  1666,
+  1727,
+  1665
+ ],
+ "effects": {
+  "fc379_ablate": {
+   "metric": "ghosts_per_pill",
+   "n": 50,
+   "delta": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "c3_ch3_cell00": {
+   "metric": "approach",
+   "n": 50,
+   "delta": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ]
+  }
+ }
+}

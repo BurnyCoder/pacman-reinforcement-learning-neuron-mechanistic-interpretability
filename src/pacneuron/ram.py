@@ -10,8 +10,12 @@ Sources:
   maze grid choice ram[0], score BCD ram[120..122], lives = ram[123] % 4. Sprite boxes are 9x10 px.
 - AtariARI (Anand et al. 2019, MIT) atariari/benchmark/ram_annotations.py "mspacman": same x/y indices,
   dots_eaten_count = ram[119].
-- Discovered in this project (reports/02_ram_ground_truth.md): ram[116] = frightened countdown timer
-  (>0 exactly while ghosts are blue), ram[1+i] bit 7 = ghost i is edible (validated against blue sprite pixels).
+- Frightened mode, identified independently here by correlating RAM with blue ghost pixels
+  (reports/02_ram_ground_truth.md) and, earlier, documented by taodav/jev_deep_rl (jev_rl/mspacman.py, commit
+  3f69ca3a, 2026-09-20, https://github.com/taodav/jev_deep_rl): ram[1+i] bit 7 = ghost i is edible; ram[116] > 0
+  while any ghost is edible. Only the low six bits of ram[116] are a countdown; its upper bits change when ghosts
+  are eaten (jev_deep_rl; measured in results/ground_truth_*.json). `frightened_timer` keeps the raw byte because
+  the frozen analyses used it; `frightened_ticks` is the masked countdown.
 """
 
 from __future__ import annotations
@@ -56,13 +60,34 @@ def ghosts_active(ram: np.ndarray) -> np.ndarray:
 
 
 def ghost_edible(ram: np.ndarray) -> np.ndarray:
-    """[..., 4] bool: ghost i is frightened/edible (bit 7 of ram[1+i]; discovered here, see module doc)."""
+    """[..., 4] bool: ghost i is frightened/edible (bit 7 of ram[1+i]; see module doc for sources)."""
     return (_i(ram)[..., 1:5] & 128) > 0
 
 
 def frightened_timer(ram: np.ndarray) -> np.ndarray:
-    """Frightened countdown (ram[116]); 0 when no ghost is edible, restarts near 60 when a power pill is eaten."""
+    """Raw ram[116]: 0 when no ghost is edible, > 0 during frightened mode. Not a pure countdown: the upper two bits
+    change when ghosts are eaten (module doc). Kept raw because the frozen feature set (fright_timer) used it."""
     return _i(ram)[..., 116]
+
+
+def frightened_ticks(ram: np.ndarray) -> np.ndarray:
+    """Low six bits of ram[116]: the frightened countdown itself (jev_deep_rl masks the byte the same way, `& 63`)."""
+    return _i(ram)[..., 116] & 63
+
+
+def timer_dynamics(ticks: np.ndarray, lag: int = 4) -> dict:
+    """Start values and step size of one game's frightened countdown `ticks` [T] (from `frightened_ticks`).
+
+    starts: values right after the countdown leaves 0 (a power pill was eaten in normal mode);
+    drops: decreases over `lag` agent steps while it stays > 0 throughout (used for its modal step size).
+    """
+    t = np.asarray(ticks, np.int32)
+    starts = t[1:][(t[:-1] == 0) & (t[1:] > 0)]
+    if len(t) <= lag:
+        return {"starts": starts.tolist(), "drops": []}
+    running = np.lib.stride_tricks.sliding_window_view(t, lag + 1).min(1) > 0  # no reset inside the window
+    run = running & (t[lag:] < t[:-lag])
+    return {"starts": starts.tolist(), "drops": (t[:-lag] - t[lag:])[run].tolist()}
 
 
 def power_pills(ram: np.ndarray) -> np.ndarray:

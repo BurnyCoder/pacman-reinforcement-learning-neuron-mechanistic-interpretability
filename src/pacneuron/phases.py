@@ -13,7 +13,7 @@ from scipy.stats import rankdata
 
 from pacneuron import audit as AU
 from pacneuron import data
-from pacneuron.config import DATA_DIR, MODELS
+from pacneuron.config import DATA_DIR, DEVICE, MODELS, SPLIT_SUFFIX
 from pacneuron.features import FAMILY, cell_objects
 from pacneuron.logs import get_logger
 from pacneuron.pipeline import _model, write_result
@@ -37,7 +37,7 @@ def stochasticity(seed: str) -> None:
                 diff = np.flatnonzero((rams[a][:n] != rams[b][:n]).any(1))
                 div.append(int(diff[0]) if len(diff) else n)
     med = float(np.median(div)) if div else float("nan")
-    write_result(f"stochasticity_{MODELS[seed].name}", {
+    write_result(f"stochasticity_{MODELS[seed].name}{SPLIT_SUFFIX}", {
         "distinct_start_states": len(groups), "pairs": len(div), "divergence_steps": div,
         "median_divergence": med, "sticky_fallback_triggered": bool(med > 200)})
     log.info(f"{len(groups)} distinct start states, {len(div)} same-start pairs, median divergence {med} steps")
@@ -46,7 +46,8 @@ def stochasticity(seed: str) -> None:
 def _cell_auroc(act: np.ndarray, labels: dict[str, np.ndarray], min_pos: int = 30) -> dict[str, float]:
     """Within-cell AUROC of one channel's activation for each object type, averaged over cells (location-controlled).
 
-    act: [N, 7, 7]; labels[type]: [N, 7, 7] bool. AUROC per cell via the Mann-Whitney rank formula (ties averaged).
+    act: [N, 7, 7]; labels[type]: [N, 7, 7] bool. AUROC per cell via the Mann-Whitney rank formula (ties averaged):
+    AUROC = U / (n_pos n_neg) (Mann & Whitney 1947, https://doi.org/10.1214/aoms/1177730491).
     """
     out = {}
     ranks = np.empty_like(act, dtype=np.float64)
@@ -106,7 +107,9 @@ def audit(seed: str, n_boot: int = 2000) -> None:
         d = clean_boot["agent"] - clean_boot[k]
         summary["agent"][f"diff_vs_{k}"] = [float(d.mean()), *map(float, np.quantile(d, [0.025, 0.975]))]
 
-    # per-unit table (agent fc, all 512 units; dead units flagged)
+    # per-unit table (agent fc, all 512 units; dead units flagged). "dla" = the unit's column of the linear policy
+    # head, i.e. its direct logit attribution per unit of activation (Elhage et al. 2021,
+    # https://transformer-circuits.pub/2021/framework/index.html); exact here because the head is linear.
     s1, sall = r2["agent"]
     R1, RA = s1.r2(), sall.r2()
     Wpi = model.policy.weight.detach().cpu().numpy()
@@ -169,9 +172,9 @@ def screen(seed: str) -> None:
     doses = np.array([ch["p99_cell"] for ch in audit_res["conv3_channels"]], np.float32)  # [64, 7, 7]
     model = _model(seed)
     log.info(f"screen {name}: conv3 patch screen over 64x49 patches")
-    ps = SC.patch_screen(model, S, mazes, doses)
+    ps = SC.patch_screen(model, S, mazes, doses, device=DEVICE)
     log.info(f"screen {name}: fc ablation screen")
-    ab = SC.ablation_screen(model, S, mazes)
+    ab = SC.ablation_screen(model, S, mazes, device=DEVICE)
     out = DATA_DIR / "analysis"
     np.savez(out / f"screen_{name}.npz", **ps, **{f"ablate_{k}": v for k, v in ab.items()})
     att = ps["attraction_junction"]
@@ -373,11 +376,18 @@ def fidelity(seed: str) -> None:
     model = _model(seed).cpu()
     with torch.no_grad():
         out = model(torch.as_tensor(g["obs"]))
+    gpu = {}
+    if torch.cuda.is_available():  # data were collected on CUDA with PyTorch's default cuDNN TF32 convolutions
+        mg = _model(seed).cuda()  # (torch.backends.cudnn.allow_tf32 defaults to True: https://docs.pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-and-later-devices)
+        with torch.no_grad():
+            og = mg(torch.as_tensor(g["obs"]).cuda())
+        gpu = {"max_abs_logit_diff_gpu": float(np.abs(og["logits"].cpu().numpy() - g["logits"]).max()),
+               "gpu": torch.cuda.get_device_name(0), "cudnn_allow_tf32": bool(torch.backends.cudnn.allow_tf32)}
     write_result("fidelity", {"golden_steps": int(len(g["obs"])), "obs_mismatched_steps": mismatched,
                               "life_losses": int(g["life_lost"].sum()), "game_over": bool(g["game_over"].any()),
                               "max_abs_logit_diff": float(np.abs(out["logits"].numpy() - g["logits"]).max()),
                               "max_abs_value_diff": float(np.abs(out["value"].numpy() - g["values"].reshape(-1)).max()),
-                              "reference_stack": "sample-factory 2.0.3, gym 0.26.2, ale-py 0.8.1, torch 1.13.1 (WSL)"})
+                              "reference_stack": "sample-factory 2.0.3, gym 0.26.2, ale-py 0.8.1, torch 1.13.1 (WSL)", **gpu})
 
 
 def ground_truth(seed: str) -> None:
@@ -388,10 +398,24 @@ def ground_truth(seed: str) -> None:
     d = data.split_dir(MODELS[seed].name, "discovery")
     games = data.load_games(d, ("ram", "blue", "maze"))
     agree_edible, agree_timer, eat_hits, eat_total, ctrl, n = 0, 0, 0, 0, 0, 0
+    bit_only, blue_only, dis_ticks, ed_ticks, starts, drops, fright, upper = 0, 0, [], [], [], [], 0, 0
     for g in games:
         ram = g["ram"]
         ed = R.ghost_edible(ram) & R.ghosts_active(ram)
-        agree_edible += int(((g["blue"] >= 4) == ed).sum())
+        blue = g["blue"] >= 4
+        agree_edible += int((blue == ed).sum())
+        # where the edible bit and the blue pixels disagree, and how far into frightened mode (countdown low bits)
+        ticks = R.frightened_ticks(ram)
+        bit_only += int((ed & ~blue).sum())
+        blue_only += int((~ed & blue).sum())
+        dis_ticks.append(np.broadcast_to(ticks[:, None], ed.shape)[ed != blue])
+        ed_ticks.append(np.broadcast_to(ticks[:, None], ed.shape)[ed])  # base rate: all edible ghost-steps
+        dyn = R.timer_dynamics(ticks)
+        starts += dyn["starts"]
+        drops += dyn["drops"]
+        raw = R.frightened_timer(ram)
+        fright += int((raw > 0).sum())
+        upper += int((raw > 63).sum())  # upper bits of ram[116] set (they change when ghosts are eaten)
         agree_timer += int(((R.frightened_timer(ram) > 0) == R.ghost_edible(ram).any(1)).sum())
         pel, xy = R.pellets(ram), R.player_xy(ram)
         node = M.node_of(xy[:, 0], xy[:, 1])
@@ -401,10 +425,20 @@ def ground_truth(seed: str) -> None:
                 eat_hits += int(i * M.COLS + j in (node[t - 1], node[t]))
         ctrl += int(in_control(ram).sum())
         n += len(ram)
+    dis = np.concatenate(dis_ticks)
+    vals, counts = np.unique(drops, return_counts=True)
     write_result(f"ground_truth_{MODELS[seed].name}", {
         "steps": n, "games": len(games), "edible_bit_vs_blue_pixels_agreement": agree_edible / (4 * n),
         "timer_vs_any_edible_agreement": agree_timer / n, "pellet_eaten_at_player_node": eat_hits / eat_total,
-        "pellet_events": eat_total, "in_control_fraction": ctrl / n, "maze_layouts": len(data.load_bank(d).mazes)})
+        "pellet_events": eat_total, "in_control_fraction": ctrl / n, "maze_layouts": len(data.load_bank(d).mazes),
+        "edible_disagreements": int(len(dis)), "disagree_bit_without_blue": bit_only / max(len(dis), 1),
+        "disagree_blue_without_bit": blue_only / max(len(dis), 1),
+        "disagree_median_ticks": float(np.median(dis)) if len(dis) else float("nan"),
+        "disagree_share_ticks_le_10": float((dis <= 10).mean()) if len(dis) else float("nan"),
+        "edible_share_ticks_le_10": float((np.concatenate(ed_ticks) <= 10).mean()),
+        "timer_start_min": int(min(starts)), "timer_start_max": int(max(starts)), "timer_starts": len(starts),
+        "timer_drop_mode_per_4_steps": int(vals[np.argmax(counts)]), "timer_drop_mode_share": float(counts.max() / counts.sum()),
+        "timer_upper_bits_share_of_frightened_steps": upper / max(fright, 1)})
 
 
 def conjunctions(seed: str) -> None:
@@ -599,7 +633,7 @@ def dose_screen(seed: str) -> None:
     model = _model(seed)
     out = {}
     for label, doses in (("p99", p99), ("max", mx.copy()), ("2x_max", 2 * mx)):
-        att = SC.patch_screen(model, S, mazes, doses)["attraction_junction"]
+        att = SC.patch_screen(model, S, mazes, doses, device=DEVICE)["attraction_junction"]
         i = int(np.argmin(att))
         out[label] = {"strongest_repel": float(att.ravel()[i]), "channel": i // 49, "cell": [i % 49 // 7, i % 7],
                       "strongest_attract": float(att.max()), "mean_abs": float(np.abs(att).mean())}
@@ -685,3 +719,123 @@ def attribution(seed: str, n_top: int = 200, n_occ: int = 50) -> None:
         out[c["name"]] = res
         log.info(f"attribution {name}/{c['name']}: done")
     write_result(f"attribution_{name}", {"candidates": out, "occlusion_patch": AT.PATCH, "occlusion_stride": AT.STRIDE})
+
+
+def claim_checks(seed: str, n_occ: int = 50, near_px: float = 12.0) -> None:
+    """EXPLORATORY numbers behind prose claims that no other phase reports (discovery data only).
+
+    - best_features: which single feature best explains each unit of each set (discovery split-half R², from
+      DATA_DIR/analysis/audit_<model>.npz written by `audit`), e.g. whether random directions mostly track pellets;
+    - candidates: for each frozen/derived steering candidate, the frightened share of its active steps vs the base
+      rate, and where Ms. Pac-Man is in the n_occ top states that the occlusion map averages over (same selection
+      as `attribution`), relative to the map's peak;
+    - fright_timer_mask: how the split-half single-feature R² of `fright_timer` would change if the upper bits of
+      ram[116] were masked (ram.frightened_ticks), since the frozen feature used the raw byte.
+    """
+    import json
+    from collections import Counter
+
+    from pacneuron import ram as R
+    from pacneuron.config import RESULTS_DIR
+    name = MODELS[seed].name
+    audit_res = json.loads((RESULTS_DIR / f"audit_{name}.json").read_text())
+    names = audit_res["features"]
+    arr = np.load(DATA_DIR / "analysis" / f"audit_{name}.npz")
+    best = {}
+    for k in ("agent", "random_dirs", "nonneg_mix", "untrained"):
+        c = Counter(names[i] for i in arr[f"{k}_r2_single"].argmax(0))
+        best[k] = {"units": int(sum(c.values())), "top": c.most_common(3)}
+    d = data.split_dir(name, "discovery")
+    S = data.load_split(d, acts=("conv3", "fc_pre"))
+    F, ram = S["features"], S["ram"]
+    derived = RESULTS_DIR / f"candidates_{name}.json"
+    frozen = json.loads((derived if derived.exists() else RESULTS_DIR / "candidates.json").read_text())
+    att = json.loads((RESULTS_DIR / f"attribution_{name}.json").read_text())["candidates"]
+    cands = {}
+    for c in [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]:
+        spec = c["spec"]
+        if spec["site"] == "fc":
+            act = np.maximum(S["fc_pre"][:, spec["units"][0]].astype(np.float32), 0)
+        else:
+            (i, j), ch = spec["cell"], spec["units"][0]
+            act = S["conv3"][:, ch, i, j].astype(np.float32)
+        top = np.argsort(-act)[:n_occ]  # identical selection to phases.attribution
+        occ = np.array(att[c["name"]]["occlusion"])
+        a, b = np.unravel_index(int(np.argmax(occ)), occ.shape)
+        peak = np.array([(6 * b + 6) * 160 / 84, (6 * a + 6) * 210 / 84])  # patch centre in screen px (report.py)
+        centre = R.player_xy(ram[top]) + np.array([R.SPRITE_W / 2, R.SPRITE_H / 2])
+        dist = np.hypot(*(centre - peak).T)
+        t = S["t"][top]
+        cands[c["name"]] = {
+            "label": c.get("label", c["name"]), "frac_active": float((act > 0).mean()),
+            "frightened_share_when_active": float(F["frightened"][act > 0].mean()),
+            "frightened_base_rate": float(F["frightened"].mean()),
+            "occlusion_top_states": len(top), "player_to_peak_median_px": float(np.median(dist)),
+            "player_near_peak_share": float((dist <= near_px).mean()), "near_px": near_px,
+            "top_states_distinct_games": len(np.unique(S["game"][top])),
+            "top_states_step_median": float(np.median(t)),
+            "top_states_share_within_10_steps_of_median": float((np.abs(t - np.median(t)) <= 10).mean())}
+    # fright_timer masked vs raw (split-half R² for the alive agent units, same estimator as the audit)
+    fc = np.maximum(S["fc_pre"].astype(np.float32), 0)
+    A = fc[:, AU.alive(fc)]
+    g = S["game"]
+    fit, ev = g % 2 == 0, g % 2 == 1
+    feats = {"raw": F["fright_timer"], "masked": R.frightened_ticks(ram).astype(np.float32)}
+    s1, _ = AU.r2_single(A[fit], {k: v[fit] for k, v in feats.items()}, A[ev], {k: v[ev] for k, v in feats.items()},
+                         g[ev] // 2, int(g[ev].max()) // 2 + 1)
+    r_raw, r_mask = s1.r2()
+    best_now = arr["agent_r2_single"].max(0)
+    r_all = arr["agent_r2_all"]
+    newly_clean = (r_all >= AU.CLEAN_R2_ALL) & (r_mask >= AU.CLEAN_RATIO * r_all) & ~AU.clean_mask(arr["agent_r2_single"], r_all)
+    mask = {"max_gain": float((r_mask - r_raw).max()), "median_gain": float(np.median(r_mask - r_raw)),
+            "units_where_masked_beats_best_feature": int((r_mask > best_now).sum()),
+            "units_newly_clean_if_masked": int(newly_clean.sum()), "raw_matches_audit": bool(np.allclose(
+                r_raw, arr["agent_r2_single"][names.index("fright_timer")], atol=1e-4))}
+    write_result(f"claim_checks_{name}", {"exploratory": True, "best_features": best, "candidates": cands,
+                                          "fright_timer_mask": mask})
+
+
+def aa_control(seed: str, n_games: int = 50) -> None:
+    """EXPLORATORY A/A control for the paired design: replay the first n_games held-out seeds with NO intervention
+    in the steering runner and compare each game with the same seed in the baseline collection.
+
+    Baseline and steered arms were played in different GPU batches; cuDNN TF32 makes logits depend slightly on the
+    batch (results/fidelity.json), so "same seed" does not guarantee the same trajectory. This measures how often
+    unsteered games stay identical and which paired Δ the batching alone produces on the primary metrics.
+    """
+    import json
+
+    from pacneuron import steer
+    from pacneuron.config import HELDOUT_SEEDS, RESULTS_DIR
+    from pacneuron.prereg import require_frozen
+    from pacneuron.stats import mean_ci
+    lock = require_frozen()
+    name = MODELS[seed].name
+    out_dir = DATA_DIR / "steer" / name / "heldout" / "aa_noop"
+    seeds = list(HELDOUT_SEEDS[:n_games])
+    if not (out_dir / "mazes.pkl").exists():
+        steer.run_arm(_model(seed), seeds, None, out_dir, desc=f"heldout/{name}/aa_noop")
+    base_dir = data.split_dir(name, "heldout")
+    base = {g["seed"]: g["action"] for g in data.load_games(base_dir, ("action",))}
+    arm = {g["seed"]: g["action"] for g in data.load_games(out_dir, ("action",))}
+    first = []
+    for s in seeds:
+        a, b = base[s], arm[s]
+        n = min(len(a), len(b))
+        diff = np.flatnonzero(a[:n] != b[:n])
+        first.append(int(diff[0]) if len(diff) else (n if len(a) == len(b) else n))
+    identical = [bool(np.array_equal(base[s], arm[s])) for s in seeds]
+    derived = RESULTS_DIR / f"candidates_{name}.json"
+    frozen = json.loads((derived if derived.exists() else RESULTS_DIR / "candidates.json").read_text())
+    effects = {}
+    for c in [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]:
+        kw = c.get("metric_kwargs", {})
+        bm, am = steer.arm_metrics(base_dir, **kw), steer.arm_metrics(out_dir, **kw)
+        d = np.array([am[s][c["metric"]] - bm[s][c["metric"]] for s in seeds
+                      if np.isfinite(am[s].get(c["metric"], np.nan)) and np.isfinite(bm[s].get(c["metric"], np.nan))])
+        m, lo, hi = mean_ci(d)
+        effects[c["name"]] = {"metric": c["metric"], "n": len(d), "delta": m, "ci": [lo, hi]}
+    write_result(f"aa_control_{name}", {"exploratory": True, "lock": lock, "games": len(seeds),
+                                        "identical_action_sequences": int(sum(identical)),
+                                        "median_first_divergence_step": float(np.median(first)),
+                                        "first_divergence_steps": first, "effects": effects})

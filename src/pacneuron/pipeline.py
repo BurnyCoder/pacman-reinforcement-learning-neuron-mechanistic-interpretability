@@ -1,10 +1,13 @@
 """Single entry point that runs the study as named phases.
 
-Usage: uv run python -m pacneuron.pipeline --phase <name> [--seed 1111]
-Phases (in order): collect-discovery, stochasticity, audit, screen, freeze-check, collect-heldout, h1, steer,
-replicate, report, site. `all` runs the phases that need no human decision in between.
+Usage: uv run python -m pacneuron.pipeline --phase <name>[,<name>...] [--seed 1111]
+Phases: collect-discovery and collect-heldout (here), plus every function in phases.py with "_" written as "-"
+(stochasticity, ground-truth, audit, conjunctions, conv3-states, screen, dose-screen, pilot, derive-candidates, h1,
+confirm, offtarget, attribution, occupancy, claim-checks, fidelity, maze-frame, videos, report, site, publish-hf);
+docs/pipeline.md lists their inputs and outputs. There is no "all" phase: the preregistration requires committing
+the frozen candidates between the discovery and held-out phases.
 Global: each phase reads inputs from DATA_DIR / results and writes small JSON summaries to results/, from which
-`pacneuron.report` regenerates every table and figure.
+`pacneuron.report` regenerates the tables, inline numbers and static figures.
 """
 
 from __future__ import annotations
@@ -13,7 +16,7 @@ import argparse
 import json
 import time
 
-from pacneuron.config import DISCOVERY_SEEDS, HELDOUT_SEEDS, MODELS, RESULTS_DIR
+from pacneuron.config import DISCOVERY_SEEDS, HELDOUT_SEEDS, MODELS, RESULTS_DIR, SPLIT_SUFFIX
 from pacneuron.logs import get_logger
 
 log = get_logger("pacneuron.pipeline")
@@ -49,7 +52,7 @@ def collect(seed: str, split: str) -> None:
                            on_game=data.saver(d), desc=f"{seed}/{split}")
     data.save_bank(d, bank)
     scores = [r["score"] for r in recs]
-    write_result(f"collect_{MODELS[seed].name}_{split}", {
+    write_result(f"collect_{MODELS[seed].name}_{split}{SPLIT_SUFFIX}", {
         "model": MODELS[seed].name, "split": split, "games": len(recs), "seeds": [r["seed"] for r in recs],
         "scores": scores, "steps": [r["steps"] for r in recs], "mazes": len(bank.mazes),
         "seconds": time.time() - t0})
@@ -60,7 +63,10 @@ def main(argv=None) -> None:
     p.add_argument("--phase", required=True)
     p.add_argument("--seed", default="1111", choices=list(MODELS))
     a = p.parse_args(argv)
-    for phase in a.phase.split(","):  # comma-separated list runs phases in order (stops at the first failure)
+    phases_run = a.phase.split(",")  # comma-separated list runs phases in order (stops at the first failure)
+    if SPLIT_SUFFIX and set(phases_run) - {"collect-discovery", "stochasticity"}:
+        raise SystemExit(f"STICKY != 0.25 ({SPLIT_SUFFIX}) is only for the collect-discovery/stochasticity check")
+    for phase in phases_run:
         log.info(f"phase={phase} seed={a.seed}")
         if phase == "collect-discovery":
             collect(a.seed, "discovery")

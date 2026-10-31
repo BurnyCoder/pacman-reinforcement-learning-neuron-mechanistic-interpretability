@@ -48,11 +48,13 @@ class ModelSpec:
     reported_std_reward: float
 
 
-# Sample Factory 2.0 APPO agents trained 2B env steps on MsPacmanNoFrameskip-v4 (reward only).
+# Sample Factory 2.0 APPO agents trained for 2B emulator frames (~500M agent steps at frameskip 4) on
+# MsPacmanNoFrameskip-v4 (reward only): cfg.json train_for_env_steps=2e9 with summaries_use_frameskip=True.
 # Source: https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111 (cfg.json, README.md).
 # cfg.json has load_checkpoint_kind="latest", so the model-card reward refers to the latest checkpoint.
 # Revisions are the HF git commit SHAs at the time of this study (pinned for reproducibility).
-# All three runs end with the same "latest" checkpoint name (policy version 976624, 2,000,125,952 env steps).
+# All three runs end with the same "latest" checkpoint name (policy version 976624, env-step counter
+# 2,000,125,952 = emulator frames).
 _LATEST = "checkpoint_p0/checkpoint_000976624_2000125952.pth"
 MODELS: dict[str, ModelSpec] = {
     "1111": ModelSpec("appo_1111", "edbeeching/atari_2B_atari_mspacman_1111",
@@ -75,5 +77,8 @@ DISCOVERY_SEEDS = tuple(range(0, 100))
 # found same-start games stay identical for a median of 1230 agent steps (> 200 threshold), so the preregistered
 # fallback applies: every game in the study uses repeat_action_probability = 0.25 (Machado et al. 2018 recommendation,
 # https://arxiv.org/abs/1709.06009). The fidelity tests still run without sticky actions (training setting).
-STICKY = 0.25
+# STICKY=0 in the environment reproduces the preregistered no-sticky check; its rollouts and results get the
+# "_nosticky" suffix (SPLIT_SUFFIX) so they never overwrite the study's sticky-action data.
+STICKY = float(os.environ.get("STICKY", "0.25"))
+SPLIT_SUFFIX = "" if STICKY == 0.25 else "_nosticky" if STICKY == 0 else f"_sticky{STICKY:g}"
 HELDOUT_SEEDS = tuple(range(10000, 10100))

@@ -5,5 +5,8 @@
  "game_over": true,
  "max_abs_logit_diff": 1.1444091796875e-05,
  "max_abs_value_diff": 4.76837158203125e-07,
- "reference_stack": "sample-factory 2.0.3, gym 0.26.2, ale-py 0.8.1, torch 1.13.1 (WSL)"
+ "reference_stack": "sample-factory 2.0.3, gym 0.26.2, ale-py 0.8.1, torch 1.13.1 (WSL)",
+ "max_abs_logit_diff_gpu": 0.044689178466796875,
+ "gpu": "NVIDIA GeForce RTX 5070 Laptop GPU",
+ "cudnn_allow_tf32": true
 }

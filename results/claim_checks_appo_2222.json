@@ -1,0 +1,108 @@
+{
+ "exploratory": true,
+ "best_features": {
+  "agent": {
+   "units": 380,
+   "top": [
+    [
+     "n_pellets",
+     149
+    ],
+    [
+     "player_x",
+     95
+    ],
+    [
+     "player_y",
+     44
+    ]
+   ]
+  },
+  "random_dirs": {
+   "units": 512,
+   "top": [
+    [
+     "n_pellets",
+     444
+    ],
+    [
+     "maze",
+     31
+    ],
+    [
+     "heading",
+     14
+    ]
+   ]
+  },
+  "nonneg_mix": {
+   "units": 512,
+   "top": [
+    [
+     "n_pellets",
+     217
+    ],
+    [
+     "player_x",
+     147
+    ],
+    [
+     "player_y",
+     59
+    ]
+   ]
+  },
+  "untrained": {
+   "units": 500,
+   "top": [
+    [
+     "n_pellets",
+     228
+    ],
+    [
+     "maze",
+     208
+    ],
+    [
+     "player_x",
+     23
+    ]
+   ]
+  }
+ },
+ "candidates": {
+  "fc379_ablate": {
+   "label": "fc neuron 379 zero-ablated",
+   "frac_active": 0.4429921636657295,
+   "frightened_share_when_active": 0.36940112709999084,
+   "frightened_base_rate": 0.5212119221687317,
+   "occlusion_top_states": 50,
+   "player_to_peak_median_px": 22.79453722982,
+   "player_near_peak_share": 0.02,
+   "near_px": 12.0,
+   "top_states_distinct_games": 41,
+   "top_states_step_median": 1435.0,
+   "top_states_share_within_10_steps_of_median": 0.0
+  },
+  "c3_ch3_cell00": {
+   "label": "conv3 channel 3 set to its p99 at cell (0, 0)",
+   "frac_active": 0.03221869952742717,
+   "frightened_share_when_active": 0.8579651117324829,
+   "frightened_base_rate": 0.5212119221687317,
+   "occlusion_top_states": 50,
+   "player_to_peak_median_px": 21.08837091278276,
+   "player_near_peak_share": 0.0,
+   "near_px": 12.0,
+   "top_states_distinct_games": 29,
+   "top_states_step_median": 1960.5,
+   "top_states_share_within_10_steps_of_median": 0.18
+  }
+ },
+ "fright_timer_mask": {
+  "max_gain": 0.02862838220520536,
+  "median_gain": 7.743162857604124e-05,
+  "units_where_masked_beats_best_feature": 7,
+  "units_newly_clean_if_masked": 0,
+  "raw_matches_audit": true
+ }
+}
