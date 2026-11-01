@@ -1,7 +1,8 @@
 """Preregistration lock: confirmatory phases refuse to run unless the plan files are committed and unchanged.
 
 Local: `require_frozen()` checks git for the preregistration, its addendum and results/candidates.json, and returns
-their SHA-256 hashes plus the commit that froze them (written into every confirmatory result file).
+their SHA-256 hashes plus the commit that froze them (written into every confirmatory result file);
+`require_frozen_for(model)` adds a replication agent's own rule-derived candidates file.
 Global: enforces "no held-out data before the candidates are frozen" (reports/preregistration.md §3, §6).
 """
 
