@@ -172,6 +172,37 @@ def occupancy_maps(frame: np.ndarray, base: np.ndarray, steered: np.ndarray, cel
     save(fig, path)
 
 
+def cell_delta_heatmap(frame: np.ndarray, delta: np.ndarray, cell: tuple, path: Path, title: str) -> None:
+    """Post-hoc specificity map: paired Δ approach rate toward the target node of every conv3 cell, drawn as 7x7
+    tiles over a gray maze frame (tile = the 8-obs-px stride around the cell's receptive-field centre, mapped to the
+    screen). Diverging colours centred at 0 (blue = approached less); the steered cell is outlined. If the steering
+    effect were local, only tiles at and near the outlined cell would be blue."""
+    style()
+    fig, ax = plt.subplots(figsize=(4.2, 4.6))
+    ax.imshow(frame[:180].mean(-1), extent=(0, 160, 180, 0), cmap="gray", vmin=0, vmax=255)  # bottom tiles end ~174
+    vmax = float(np.abs(delta).max()) or 1.0
+    sx, sy = 160 / 84, 210 / 84
+    for i in range(7):
+        for j in range(7):
+            x0, y0 = (8 * j + 13.5) * sx, (8 * i + 13.5) * sy
+            ax.add_patch(plt.Rectangle((x0, y0), 8 * sx, 8 * sy, color=DIVERGING(0.5 + 0.5 * delta[i, j] / vmax),
+                                       alpha=0.8, lw=0))
+    i, j = cell
+    ax.add_patch(plt.Rectangle(((8 * j + 13.5) * sx, (8 * i + 13.5) * sy), 8 * sx, 8 * sy, fill=False, ec=INK, lw=2))
+    k = int(np.argmin(delta))
+    for (a, b), txt in (((i, j), f"steered\n{delta[i, j]:+.3f}"), (divmod(k, 7), f"largest drop\n{delta.flat[k]:+.3f}")):
+        ax.text((8 * b + 17.5) * sx, (8 * a + 17.5) * sy, txt, ha="center", va="center", fontsize=6.5, color=INK,
+                bbox={"boxstyle": "round,pad=0.15", "fc": SURF, "ec": "none", "alpha": 0.85})
+    sm = plt.cm.ScalarMappable(cmap=DIVERGING, norm=plt.Normalize(-vmax, vmax))
+    fig.colorbar(sm, ax=ax, fraction=0.045, pad=0.02, label="Δ approach rate (steered − baseline)")
+    ax.set_xlim(0, 160)
+    ax.set_ylim(180, 0)
+    ax.axis("off")
+    ax.set_title(title + "\npaired Δ approach toward each conv3 cell's target node\n(tiles at the cells' receptive-field "
+                 "centres; the maze edges lie outside all of them)", loc="left", fontsize=9)
+    save(fig, path)
+
+
 def occlusion_overlay(frame: np.ndarray, occ: np.ndarray, path: Path, title: str, patch: int = 12, stride: int = 6) -> None:
     """Occlusion map (activation drop when a patch is replaced by the mean frame) over one top-activating frame.
 

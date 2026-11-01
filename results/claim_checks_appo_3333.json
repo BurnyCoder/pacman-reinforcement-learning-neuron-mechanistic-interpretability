@@ -16,7 +16,9 @@
      "player_y",
      38
     ]
-   ]
+   ],
+   "clean_units": 0,
+   "clean_top": []
   },
   "random_dirs": {
    "units": 512,
@@ -33,7 +35,9 @@
      "player_x",
      10
     ]
-   ]
+   ],
+   "clean_units": 0,
+   "clean_top": []
   },
   "nonneg_mix": {
    "units": 512,
@@ -50,7 +54,9 @@
      "player_y",
      30
     ]
-   ]
+   ],
+   "clean_units": 0,
+   "clean_top": []
   },
   "untrained": {
    "units": 501,
@@ -66,6 +72,13 @@
     [
      "player_y",
      11
+    ]
+   ],
+   "clean_units": 58,
+   "clean_top": [
+    [
+     "maze",
+     58
     ]
    ]
   }

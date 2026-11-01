@@ -135,6 +135,93 @@ def h1_robustness_table(h1: dict) -> str:
     return NL.join(rows)
 
 
+def _eff(e: dict, d: int = 3) -> str:
+    """'base → arm (Δ d [lo, hi])' for a paired-effect dict from phases._paired_effect."""
+    return f"{_f(e['base_mean'], d)} → {_f(e['arm_mean'], d)} (Δ {_f(e['delta'], d)} [{_f(e['ci'][0], d)}, {_f(e['ci'][1], d)}])"
+
+
+def _region(r: dict) -> str:
+    return f"{_f(r['base'])} → {_f(r['steered'])} (Δ {_f(r['delta'])} [{_f(r['ci'][0])}, {_f(r['ci'][1])}])"
+
+
+def specificity_tables(sp: dict) -> str:
+    """Post-hoc specificity checks (phases.specificity): spatial specificity and strength of the conv3 candidates,
+    context specificity and a null for the fc candidates' secondary metric, and between-game dependence."""
+    c3 = {k: v for k, v in sp["candidates"].items() if v["site"] == "conv3"}
+    fc = {k: v for k, v in sp["candidates"].items() if "contexts" in v}
+    rows = ["| conv3 candidate (post hoc) | Δ approach, steered cell (rank of 49, 1 = largest drop) | median Δ over all 49 "
+            "cells | time within 3 steps of target (rank of 49) | occupancy of the steered cell's quadrant | most vacated "
+            "quadrant |", "|---|---|---|---|---|---|"]
+    for v in c3.values():
+        t, q, mv = v["target"], v["steered_quadrant"], v["most_vacated_quadrant"]
+        rows.append(f"| {v['label']} | {_f(t['approach_delta'])} ({t['approach_rank']}) | {_f(t['median_approach_delta'])} | "
+                    f"{_f(t['near_base'])} → {_f(t['near_steered'])}, {100 * t['near_rel_change']:+.0f}% ({t['near_rank']}) | "
+                    f"{q}: {_region(v['regions'][q])} | {mv}: {_region(v['regions'][mv])} |")
+    rows += ["", "| conv3 candidate (post hoc) | open-loop KL at its cell: rank of 64 (× median of the other 63) | nulls with a "
+             "larger return loss (seeds 10000–10019) | action-change rate | 8-step net displacement (lattice steps) | Δ approach "
+             "without life-loss windows |", "|---|---|---|---|---|---|"]
+    for v in c3.values():
+        o, dm, nv = v["open_loop"], v["damage_vs_null"], v["navigation"]
+        rows.append(f"| {v['label']} | {o['kl_rank']} ({o['kl_ratio_to_median_other']:.0f}×) | "
+                    f"{_pct(dm['return']['share_nulls_more_damaging'])} of {dm['n_null']} | {_eff(nv['action_change'])} | "
+                    f"{_eff(nv['displacement'], 2)} | {_f(v['approach_excluding_loss']['delta'])} |")
+    if fc:
+        rows += ["", "| fc candidate (post hoc) | P(voted direction) when the nearest edible ghost is in that direction | "
+                 "frightened, edible ghost elsewhere, direction open | normal mode, direction open | secondary Δ vs 99 null "
+                 "ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |",
+                 "|---|---|---|---|---|"]
+        for v in fc.values():
+            cx, sv = v["contexts"], v["secondary_vs_null"]
+            rows.append(f"| {v['label']} ({cx['direction']}) | {_eff(cx['trigger'])} | {_eff(cx['frightened_elsewhere_open'])} | "
+                        f"{_eff(cx['normal_open'])} | Δ {_f(sv['candidate_delta'])}: {sv['null_ge']} of "
+                        f"{len(sv['null_deltas'])} / {_f(sv['null_q95_signed'])} |")
+    rows += ["", f"Between-game dependence: the held-out games fall into {sp['start_clusters']['n']} start-state clusters "
+             f"(sizes {', '.join(map(str, sp['start_clusters']['sizes']))}).", "",
+             "| candidate | ICC of paired Δ within clusters | design effect | z | cluster-adjusted z | cluster-adjusted Holm p |",
+             "|---|---|---|---|---|---|"]
+    for v in sp["candidates"].values():
+        dp = v["dependence"]
+        p = dp["p_holm_cluster_adjusted"]  # normal approximation, so it has no permutation floor
+        rows.append(f"| {v['label']} | {_f(dp['icc'])} | {_f(dp['design_effect'], 2)} | {_f(dp['z'], 2)} | "
+                    f"{_f(dp['z_cluster_adjusted'], 2)} | {'< 0.0001' if p < 1e-4 else _f(p, 4)} |")
+    return NL.join(rows)
+
+
+def specificity_numbers(name: str, sp: dict) -> dict[str, str]:
+    """Inline numbers for the post-hoc specificity checks (keys <model>:<candidate>:spec_*)."""
+    nums = {}
+    for cname, v in sp["candidates"].items():
+        k = f"{name}:{cname}"
+        dp = v["dependence"]
+        nums[f"{k}:spec_icc"], nums[f"{k}:spec_deff"] = _f(dp["icc"]), _f(dp["design_effect"], 2)
+        nums[f"{k}:spec_z_adj"], nums[f"{k}:spec_p_adj"] = _f(dp["z_cluster_adjusted"], 2), _f(dp["p_holm_cluster_adjusted"], 4)
+        dm = v["damage_vs_null"]
+        nums[f"{k}:spec_damage"] = f"{_pct(1 - dm['return']['share_nulls_more_damaging'])} of its {dm['n_null']} null units"
+        if v["site"] == "conv3":
+            t, o = v["target"], v["open_loop"]
+            nums[f"{k}:spec_rank"] = f"{t['approach_rank']} of 49"
+            nums[f"{k}:spec_median"] = _f(t["median_approach_delta"])
+            nums[f"{k}:spec_near"] = f"{_f(t['near_base'])} → {_f(t['near_steered'])} ({100 * t['near_rel_change']:+.0f}%)"
+            nums[f"{k}:spec_near_rank"] = f"{t['near_rank']} of 49"
+            nums[f"{k}:spec_kl_rank"] = f"{o['kl_rank']} of 64"
+            nums[f"{k}:spec_kl_ratio"] = f"{o['kl_ratio_to_median_other']:.0f}×"
+            nums[f"{k}:spec_quad"] = v["steered_quadrant"]
+            nums[f"{k}:spec_vacated"] = v["most_vacated_quadrant"]
+            for rg, r in v["regions"].items():
+                nums[f"{k}:spec_region:{rg.replace(' ', '_')}"] = f"{_f(r['base'])} → {_f(r['steered'])}"
+            nv = v["navigation"]
+            nums[f"{k}:spec_change"] = f"{_f(nv['action_change']['base_mean'])} → {_f(nv['action_change']['arm_mean'])}"
+            nums[f"{k}:spec_disp"] = f"{_f(nv['displacement']['base_mean'], 2)} → {_f(nv['displacement']['arm_mean'], 2)}"
+            nums[f"{k}:spec_excl_loss"] = _f(v["approach_excluding_loss"]["delta"])
+        if "contexts" in v:
+            for ctx in ("trigger", "frightened_elsewhere_open", "normal_open"):
+                e = v["contexts"][ctx]
+                nums[f"{k}:spec_ctx:{ctx}"] = f"Δ {_f(e['delta'])} [{_f(e['ci'][0])}, {_f(e['ci'][1])}]"
+            sv = v["secondary_vs_null"]
+            nums[f"{k}:spec_sec_null"] = f"{sv['null_ge']} of {len(sv['null_deltas'])}"
+    return nums
+
+
 def attribution_table(r: dict) -> str:
     """Upstream exact contributions, occlusion peak and confound-controlled label checks per candidate unit."""
     rows = ["| unit | strongest upstream units (mean exact contribution) | occlusion peak (screen x, y) | "
@@ -205,6 +292,20 @@ def screen_table(r: dict) -> str:
         rows.append(f"| {'repel' if k < 5 else 'attract'} {k % 5 + 1} | ch {x['channel']} @ ({x['cell'][0]}, {x['cell'][1]}) | "
                     f"{100 * x['attraction_junction']:+.1f} pp | {x['dose']:.1f} |")
     return "\n".join(rows)
+
+
+def _h3_strength_note() -> str:
+    """Post-hoc caveat for the conv3 rule: is the rule-selected patch also the strongest perturbation at its cell?"""
+    ranks = []
+    for spec in MODELS.values():
+        sp = _load(f"specificity_{spec.name}") or {"candidates": {}}
+        ranks += [(spec.name, v["open_loop"]["kl_rank"]) for v in sp["candidates"].values() if v["site"] == "conv3"]
+    if not ranks:
+        return ""
+    return (" Post hoc (`specificity` phase): the conv3 rule picks the most repelling patch of the open-loop screen, and "
+            "that patch's open-loop KL ranks " + ", ".join(f"{r} of 64 ({a})" for a, r in ranks) + " among the channels at "
+            f"its cell, so the 63 null channels are {'all' if all(r == 1 for _, r in ranks) else 'mostly'} weaker "
+            "open-loop perturbations; beating them does not show that the effect is specific to that channel's content.")
 
 
 # ------------------------------------------------------------------------------------------------- driver
@@ -293,8 +394,19 @@ def generate() -> None:
             blocks[f"h1robust_{name}"] = h1_robustness_table(h1)
             for k in ("agent", "random_dirs"):
                 nums[f"{name}:sweep_0.3_0.5:{k}"] = _pct(h1["sets"][k]["threshold_sweep"]["0.3_0.5"])
+            for k in NAMES:
+                v = h1["sets"][k]
+                nums[f"{name}:h1_n_clean:{k}"] = f"{round(v['clean_frac'] * v['units'])} of {v['units']}"
+            for k in ("nonneg_mix", "untrained"):  # secondary controls (b), (c): reported, not part of the verdict
+                dv = h1["sets"]["agent"][f"diff_vs_{k}"]
+                obs = h1["sets"]["agent"]["clean_frac"] - h1["sets"][k]["clean_frac"]
+                nums[f"{name}:h1_diff_{k}"] = f"{_pct(obs)} [{_pct(dv['ci'][0])}, {_pct(dv['ci'][1])}]"
             blocks[f"h1_{name}"] = clean_table(h1["sets"], "held-out, confirmatory") + \
-                f"\n\nH1 test (agent minus random directions): {nums[f'{name}:h1_diff']}; H1 {nums[f'{name}:h1_verdict']}."
+                f"\n\nH1 test (agent minus random directions): {nums[f'{name}:h1_diff']}; H1 {nums[f'{name}:h1_verdict']}. " \
+                f"One-job units: agent {nums[f'{name}:h1_n_clean:agent']}, random directions " \
+                f"{nums[f'{name}:h1_n_clean:random_dirs']}. Secondary controls (not part of the verdict): agent minus " \
+                f"non-negative mixtures {nums[f'{name}:h1_diff_nonneg_mix']}; agent minus untrained network " \
+                f"{nums[f'{name}:h1_diff_untrained']}."
             viz.clean_fraction_bars(h1["sets"], FIGURES_DIR / f"clean_fraction_{name}.png",
                                     f"{name}: one-job neurons vs controls (held-out)")
             viz.r2_scatter({"trained agent": (np.array(h1["sets"]["agent"]["r2_all"]), np.array(h1["sets"]["agent"]["best_r2"])),
@@ -322,6 +434,9 @@ def generate() -> None:
                 nums[f"{name}:best_feat:{k}"] = f"{top} for {cnt} of {v['units']}"
                 n_pel = dict(v["top"]).get("n_pellets", 0)
                 nums[f"{name}:best_feat_pellets:{k}"] = f"{n_pel} of {v['units']}"
+                if "clean_top" in v:  # the single feature that the set's one-job units follow
+                    nums[f"{name}:clean_feat:{k}"] = ("none" if not v["clean_top"] else ", ".join(
+                        f"{f} for {n}" for f, n in v["clean_top"]) + f" of {v['clean_units']}")
             for cname, v in cc["candidates"].items():
                 key = f"{name}:{cname}"
                 nums[f"{key}:fright_active"] = _pct(v["frightened_share_when_active"])
@@ -334,6 +449,16 @@ def generate() -> None:
             nums[f"{name}:mask_max_gain"] = _f(m["max_gain"], 3)
             nums[f"{name}:mask_beats_best"] = str(m["units_where_masked_beats_best_feature"])
             nums[f"{name}:mask_newly_clean"] = str(m["units_newly_clean_if_masked"])
+        if sp := _load(f"specificity_{name}"):
+            blocks[f"specificity_{name}"] = specificity_tables(sp)
+            nums.update(specificity_numbers(name, sp))
+            frame_f = FIGURES_DIR / "maze_frame.npy"
+            cells = {c["name"]: c["spec"].get("cell") for c in _load(f"confirm_{name}")["candidates"]}
+            for cname, v in sp["candidates"].items():
+                if v["site"] == "conv3" and frame_f.exists():
+                    viz.cell_delta_heatmap(np.load(frame_f), np.array(v["cells"]["approach_delta"]), tuple(cells[cname]),
+                                           FIGURES_DIR / f"specificity_{name}_{cname}.png",
+                                           f"{name}: {v['label']} (post hoc, held-out)")
         if aa := _load(f"aa_control_{name}"):
             nums[f"{name}:aa_identical"] = f"{aa['identical_action_sequences']} of {aa['games']}"
         if ot := _load(f"offtarget_{name}"):
@@ -378,6 +503,21 @@ def generate() -> None:
                                      "q95": r["sign"] * r["null_q95_signed"]}],
                                    FIGURES_DIR / f"steer_{name}_{r['name']}.png", f"{name}: {r['label']}",
                                    f"Δ {r['metric']} (steered − baseline, paired by game seed)")
+    # post-hoc dependence check across agents: ICC range, and the preregistered pass closest to failing after the
+    # design-effect adjustment
+    dep = [(spec.name, c, v["dependence"]) for spec in MODELS.values() if (sp := _load(f"specificity_{spec.name}"))
+           for c, v in sp["candidates"].items()]
+    if dep:
+        iccs = [d["icc"] for _, _, d in dep]
+        nums["spec_icc_range"] = f"{min(iccs):.3f}–{max(iccs):.3f}"
+        nums["spec_clusters"] = str(_load(f"specificity_{dep[0][0]}")["start_clusters"]["n"])
+        passed = [(a, c, d) for a, c, d in dep
+                  if next(r for r in _load(f"confirm_{a}")["candidates"] if r["name"] == c)["passes_H2"]]
+        a, c, d = max(passed, key=lambda x: x[2]["p_holm_cluster_adjusted"])
+        nums["spec_closest_pass"] = f"{c} in {a} (cluster-adjusted Holm p {_f(d['p_holm_cluster_adjusted'], 4)})"
+        nums["spec_passes_survive"] = ("every preregistered pass stays below 0.05" if
+                                       all(d["p_holm_cluster_adjusted"] < 0.05 for _, _, d in passed) else
+                                       "not every preregistered pass stays below 0.05")
     # H3 (preregistration §7): a frozen rule replicates if the rule-selected unit passes criteria 1-2 in BOTH
     # replication agents; within-agent Holm p-values are additionally Holm-corrected over the two agents.
     from pacneuron.stats import holm
@@ -407,7 +547,7 @@ def generate() -> None:
         "A rule replicates if its unit passes H2 criteria 1-2 in both agents and the within-agent Holm p-values stay "
         "< 0.05 after a further Holm correction over the two agents (preregistration §7, \"Holm over seeds\"). "
         "Preregistration §7 defines H3 only for candidates that passed H2; fc 453 failed H2 in agent 1111, so the "
-        "fc-ablation rule's replication is exploratory. " + p_floor_note(2))
+        "fc-ablation rule's replication is exploratory. " + p_floor_note(2) + _h3_strength_note())
     for path in _targets():
         if path.exists():
             text = path.read_text(encoding="utf-8")
