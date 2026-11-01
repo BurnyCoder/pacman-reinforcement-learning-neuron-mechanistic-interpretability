@@ -30,6 +30,17 @@ def test_bootstrap_ci_coverage():
     assert 0.88 < hits / 200 < 0.99
 
 
+def test_icc_oneway_known_structure():
+    from pacneuron.stats import icc_oneway
+    rng = np.random.default_rng(4)
+    g = np.repeat(np.arange(4), [10, 12, 13, 15])
+    icc, deff = icc_oneway(rng.normal(0, 1, len(g)), g)  # no group effect -> ICC ~ 0, design effect ~ 1
+    assert icc < 0.15 and deff < 2.5
+    icc, deff = icc_oneway(10.0 * g + rng.normal(0, 0.01, len(g)), g)  # pure group effect -> ICC ~ 1
+    assert icc > 0.99
+    np.testing.assert_allclose(deff, 1 + ((np.bincount(g) ** 2).sum() / len(g) - 1) * icc)
+
+
 def test_two_sided_signflip():
     from pacneuron.stats import paired_signflip_p_two_sided
     rng = np.random.default_rng(3)

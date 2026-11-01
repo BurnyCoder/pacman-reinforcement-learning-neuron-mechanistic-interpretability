@@ -1,4 +1,5 @@
-"""Statistics: game-cluster bootstrap, paired sign-flip permutation test, Holm and Benjamini-Hochberg corrections.
+"""Statistics: game-cluster bootstrap, paired sign-flip permutation test, Holm and Benjamini-Hochberg corrections,
+and the intraclass correlation of games that share a start state.
 
 Local: small numpy functions with no project dependencies (unit-tested on synthetic data in tests/test_stats.py).
 Global: steps within one game are strongly autocorrelated, so every uncertainty estimate resamples whole games
@@ -69,6 +70,24 @@ def bh(pvals) -> np.ndarray:
         running = min(running, p[idx] * m / (rank + 1))
         adj[idx] = running
     return adj
+
+
+def icc_oneway(values: np.ndarray, groups: np.ndarray) -> tuple[float, float]:
+    """(ICC, design effect) of per-game values clustered in groups (e.g. games sharing a start state).
+
+    One-way ANOVA estimator ICC(1) = (MSB - MSW) / (MSB + (n0 - 1) MSW) (Shrout & Fleiss 1979,
+    https://doi.org/10.1037/0033-2909.86.2.420), with the unbalanced-design group size n0 = (N - Σn_i²/N) / (k - 1)
+    (Snedecor & Cochran), clipped at 0. Design effect 1 + (m - 1) ICC (Kish 1965, "Survey Sampling") with the
+    size-weighted mean group size m = Σn_i²/N: the variance inflation of a mean over clustered games.
+    """
+    y, g = np.asarray(values, float), np.unique(np.asarray(groups), return_inverse=True)[1]
+    n, k, N = np.bincount(g), g.max() + 1, len(y)
+    mu = np.bincount(g, y) / n
+    msb = (n * (mu - y.mean()) ** 2).sum() / (k - 1)
+    msw = ((y - mu[g]) ** 2).sum() / (N - k)
+    n0 = (N - (n ** 2).sum() / N) / (k - 1)
+    icc = max(float((msb - msw) / (msb + (n0 - 1) * msw)), 0.0)
+    return icc, 1 + ((n ** 2).sum() / N - 1) * icc
 
 
 def paired_signflip_p_two_sided(diffs: np.ndarray, n_perm: int = 10000, seed: int = 0) -> float:
