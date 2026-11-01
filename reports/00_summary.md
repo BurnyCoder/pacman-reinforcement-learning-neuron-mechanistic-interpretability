@@ -14,9 +14,12 @@ before the results and are not regenerated.
 - **Labels.** Most neurons do not track one game fact. They respond to combinations: mostly *where Ms. Pac-Man is
   and which way she is heading*.
 - **Steering.** A few units do change behaviour when steered. Setting a single unit in the last convolutional
-  layer makes the agent avoid one region of the maze, like a phantom "no-go zone". This held up in all three
-  agents, on games not used to choose the unit, and each time it beat all 63 other channels at the same position.
-  Turning off a unit that votes "go up" makes the agent go up toward edible ghosts less often, but does not
+  layer makes the agent head toward that unit's spot in the maze less often. This passed the preregistered test in
+  all three agents, on games not used to choose the unit, and each time it beat all 63 other channels at the same
+  position. A later check shows what it actually does: it disturbs the agent's navigation everywhere (it heads
+  toward almost *every* spot less often and dies more). It is also a much bigger jolt than the other 63 channels.
+  One agent clearly stays away from the steered spot, one leaves the whole half of the maze that contains it, and
+  one avoids a different region. Turning off a unit that votes "go up" makes the agent go up toward edible ghosts less often, and only in that situation. It does not
   consistently change how many ghosts get eaten.
 
 ## Models
@@ -69,8 +72,18 @@ Preregistration: [preregistration.md](preregistration.md) (before any data) and
 p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test (1/10,001); 0.0002 is that floor after Holm over 2 tests, so it means p ≤ that value. The positive control's frozen label says "constant logit bias": clamping unit n to v shifts the logits by (v − h_n(s))·W_π[:, n], which is constant only on steps where the unit is inactive (fc 188: active on 2.1% of in-control discovery steps).
 <!-- END:steer_appo_1111 -->
 
+**Post-hoc specificity of the passing conv3 candidate** (agent 1111, same held-out games; full tables in
+[04_steering.md](04_steering.md)):
+- Its drop in approach ranks <!--n:appo_1111:c3_ch18_cell56:spec_rank-->28 of 49<!--/n--> among all 49 cell targets
+  (median cell <!--n:appo_1111:c3_ch18_cell56:spec_median-->-0.068<!--/n-->).
+- The agent vacates the <!--n:appo_1111:c3_ch18_cell56:spec_vacated-->bottom-left<!--/n--> quadrant, not the steered
+  <!--n:appo_1111:c3_ch18_cell56:spec_quad-->bottom-right<!--/n-->.
+- It has open-loop KL rank <!--n:appo_1111:c3_ch18_cell56:spec_kl_rank-->1 of 64<!--/n--> at its cell.
+- It does more damage than <!--n:appo_1111:c3_ch18_cell56:spec_damage-->100.0% of its 63 null units<!--/n-->.
+
 **H3, replication on agents 2222 and 3333** (frozen selection rules):
-- no-go-zone rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n-->;
+- most-repelling-patch rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n--> as preregistered. Post hoc, the agent
+  avoids the steered region clearly in agent 3333 and partly in agent 2222 (the whole top half), but not in 1111;
 - ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n-->.
 
 Details are in [05_replication.md](05_replication.md).
@@ -133,6 +146,57 @@ are not edited. Where they or earlier reports were wrong or incomplete, the corr
     inline-marked numbers in the README, reports and paper. It does not hold for the hand-written numbers inside the
     frozen preregistration files themselves, for design constants quoted in prose (seeds, game counts, thresholds),
     for the videos (`videos` phase) or for `paper/paper.pdf` (`scripts/build_paper.py`).
+
+## Errata from the independent audit (2026-11-01)
+
+An independent audit re-read the code and re-analysed the existing held-out rollouts. All numbers below come from
+the post-hoc `specificity` phase (`results/specificity_<agent>.json`, no new games). The preregistered H1/H2/H3
+verdicts are unchanged; what changes is how the passing results may be interpreted.
+
+11. **The conv3 "no-go zone" was over-interpreted.** The preregistered approach metric is not spatially specific.
+    Computed for the target node of every one of the 49 conv3 cells, the steered cell's drop ranks
+    <!--n:appo_1111:c3_ch18_cell56:spec_rank-->28 of 49<!--/n--> (1111),
+    <!--n:appo_2222:c3_ch3_cell00:spec_rank-->28 of 49<!--/n--> (2222) and
+    <!--n:appo_3333:c3_ch46_cell56:spec_rank-->21 of 49<!--/n--> (3333). The agent approaches almost every location
+    less often. In agent 1111 it vacates the <!--n:appo_1111:c3_ch18_cell56:spec_vacated-->bottom-left<!--/n-->
+    (<!--n:appo_1111:c3_ch18_cell56:spec_region:bottom-left-->0.264 → 0.182<!--/n-->) rather than the steered
+    bottom-right (<!--n:appo_1111:c3_ch18_cell56:spec_region:bottom-right-->0.268 → 0.254<!--/n-->). Agent 3333
+    clearly leaves the steered region (right third
+    <!--n:appo_3333:c3_ch46_cell56:spec_region:right_third-->0.336 → 0.049<!--/n-->). Agent 2222 leaves the whole top
+    half (top third <!--n:appo_2222:c3_ch3_cell00:spec_region:top_third-->0.348 → 0.259<!--/n-->), the top-right
+    slightly more than the steered top-left.
+    Earlier wording ("makes the agent avoid the corresponding maze region", "the no-go zone is spatially local",
+    "Yes, causally and specifically") is withdrawn.
+12. **The conv3 null was not matched on perturbation strength.** It matched the dose rule (each channel's own
+    p99). In every agent the selected patch has the largest open-loop KL at its cell
+    (<!--n:appo_1111:c3_ch18_cell56:spec_kl_rank-->1 of 64<!--/n-->,
+    <!--n:appo_2222:c3_ch3_cell00:spec_kl_rank-->1 of 64<!--/n-->,
+    <!--n:appo_3333:c3_ch46_cell56:spec_kl_rank-->1 of 64<!--/n-->), and the H3 rule selects it for that reason. So
+    "the repulsion is a property of this channel at this place, not of perturbing conv3 there" was not supported. A
+    strength-matched null (e.g. KL-matched doses on fresh seeds) is untested.
+13. **H1 secondary controls were not reported.** Agent minus non-negative mixtures:
+    <!--n:appo_1111:h1_diff_nonneg_mix-->-0.5% [-0.9%, -0.4%]<!--/n--> (1111),
+    <!--n:appo_2222:h1_diff_nonneg_mix-->-0.3% [-0.6%, -0.1%]<!--/n--> (2222). Agent minus untrained network:
+    <!--n:appo_1111:h1_diff_untrained-->-8.6% [-10.8%, -4.4%]<!--/n-->,
+    <!--n:appo_2222:h1_diff_untrained-->-9.1% [-12.4%, -5.5%]<!--/n-->,
+    <!--n:appo_3333:h1_diff_untrained-->-10.4% [-12.4%, -8.2%]<!--/n-->. They are now in every H1 table.
+14. **fc ablations: the secondary metric now has a null and a context control.** The drop in the voted direction
+    is concentrated where the edible ghost lies in that direction (1111:
+    <!--n:appo_1111:fc453_ablate:spec_ctx:trigger-->Δ -0.190 [-0.209, -0.171]<!--/n--> there vs
+    <!--n:appo_1111:fc453_ablate:spec_ctx:frightened_elsewhere_open-->Δ -0.028 [-0.044, -0.013]<!--/n--> in other frightened states with
+    up open). <!--n:appo_1111:fc453_ablate:spec_sec_null-->0 of 99<!--/n--> null ablations reach it. The earlier
+    "its specificity is untested" and "attribute it to its UP vote rather than a ghost-direction representation" are
+    replaced by this result.
+15. **Start-state dependence.** Held-out games fall into <!--n:spec_clusters-->4<!--/n--> start-state clusters. The
+    intraclass correlation of the paired primary Δ within them is <!--n:spec_icc_range-->0.000–0.125<!--/n-->. After
+    inflating the variance by the design effect,
+    <!--n:spec_passes_survive-->every preregistered pass stays below 0.05<!--/n-->; the closest is
+    <!--n:spec_closest_pass-->fc379_ablate in appo_2222 (cluster-adjusted Holm p 0.0112)<!--/n-->. This is a
+    normal approximation, a robustness check only.
+16. **Lock gap.** `collect-heldout`, `h1` and `aa-control` checked only agent 1111's frozen files, not a replication
+    agent's own `results/candidates_<agent>.json` (only `confirm` did). The rule derivation reads only discovery
+    outputs, and GitHub's push log shows both derived files were pushed (06:16 and 07:03 local time) before any
+    2222/3333 held-out result was committed (07:35). `prereg.require_frozen_for` now gates all four phases on it.
 
 ## Planned items not done
 

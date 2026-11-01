@@ -16,6 +16,13 @@
      "player_y",
      44
     ]
+   ],
+   "clean_units": 4,
+   "clean_top": [
+    [
+     "n_pellets",
+     4
+    ]
    ]
   },
   "random_dirs": {
@@ -32,6 +39,13 @@
     [
      "heading",
      14
+    ]
+   ],
+   "clean_units": 4,
+   "clean_top": [
+    [
+     "n_pellets",
+     4
     ]
    ]
   },
@@ -50,6 +64,13 @@
      "player_y",
      59
     ]
+   ],
+   "clean_units": 6,
+   "clean_top": [
+    [
+     "n_pellets",
+     6
+    ]
    ]
   },
   "untrained": {
@@ -66,6 +87,13 @@
     [
      "player_x",
      23
+    ]
+   ],
+   "clean_units": 46,
+   "clean_top": [
+    [
+     "maze",
+     46
     ]
    ]
   }

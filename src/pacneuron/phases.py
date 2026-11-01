@@ -236,21 +236,29 @@ def pilot(seed: str, n_games: int = 30) -> None:
     write_result(f"pilot_{name}", {"model": name, "split": "discovery", "n_games": n_games, "candidates": results})
 
 
-def _start_groups(S: dict) -> np.ndarray:
-    """[G] id of each game's start state (identical first in-control RAM): robustness clusters for games that
-    share a start (they follow the same trajectory until sticky actions/sampling make them diverge)."""
+def start_cluster_ids(first_rams) -> np.ndarray:
+    """[G] id of each game's start state, given each game's first in-control RAM row: robustness clusters for games
+    that share a start (they follow the same trajectory until sticky actions/sampling make them diverge)."""
     keys: dict[bytes, int] = {}
-    ids = [keys.setdefault(S["ram"][np.flatnonzero(S["game"] == gi)[0]].tobytes(), len(keys))
-           for gi in range(int(S["game"].max()) + 1)]
-    return np.array(ids)
+    return np.array([keys.setdefault(r.tobytes(), len(keys)) for r in first_rams])
+
+
+def _candidates(name: str) -> dict:
+    """The frozen candidate file of an agent: rule-derived results/candidates_<model>.json for replication agents,
+    results/candidates.json for agent 1111 (filtered to this agent's candidates)."""
+    import json
+
+    from pacneuron.config import RESULTS_DIR
+    derived = RESULTS_DIR / f"candidates_{name}.json"
+    frozen = json.loads((derived if derived.exists() else RESULTS_DIR / "candidates.json").read_text())
+    return frozen | {"candidates": [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]}
 
 
 def h1(seed: str, n_boot: int = 10000) -> None:
     """Confirmatory H1 (preregistration §5): fit on all discovery games, score on held-out games."""
-    from pacneuron.prereg import require_frozen
-    from pacneuron.stats import bootstrap_weights
-    lock = require_frozen()
+    from pacneuron.prereg import require_frozen_for
     name = MODELS[seed].name
+    lock = require_frozen_for(name)
     Sf = data.load_split(data.split_dir(name, "discovery"), acts=("fc_pre", "aux_fc_pre"))
     Se = data.load_split(data.split_dir(name, "heldout"), acts=("fc_pre", "aux_fc_pre"))
     relu = lambda x: np.maximum(x.astype(np.float32), 0)
@@ -266,7 +274,7 @@ def h1(seed: str, n_boot: int = 10000) -> None:
         stats[k] = (AU.r2_single(Af, Sf["features"], Ae, Se["features"], ge, n_ev)[0],
                     AU.r2_ceiling(Af, Sf["features"], Ae, Se["features"], ge, n_ev))
     W = bootstrap_weights(n_ev, n_boot, seed=1)
-    groups = _start_groups(Se)
+    groups = start_cluster_ids(Se["ram"][np.unique(Se["game"], return_index=True)[1]])  # first in-control row per game
     Wg = bootstrap_weights(int(groups.max()) + 1, 2000, seed=2)[:, groups]  # resample start-state clusters
     out = {"lock": lock, "n_heldout_games": n_ev, "n_start_groups": int(groups.max()) + 1, "sets": {}}
     boots = {}
@@ -291,17 +299,14 @@ def h1(seed: str, n_boot: int = 10000) -> None:
 
 def confirm(seed: str) -> None:
     """Confirmatory steering (preregistration §6) for the frozen candidates on held-out games."""
-    import json
-
     from pacneuron import steer
-    from pacneuron.config import HELDOUT_SEEDS, RESULTS_DIR
-    from pacneuron.prereg import require_frozen
+    from pacneuron.config import HELDOUT_SEEDS
+    from pacneuron.prereg import require_frozen_for
     from pacneuron.stats import holm
     name = MODELS[seed].name
-    derived = RESULTS_DIR / f"candidates_{name}.json"  # replication agents: rule-derived candidates (H3)
-    lock = require_frozen([f"results/{derived.name}"] if derived.exists() else [])
-    frozen = json.loads((derived if derived.exists() else RESULTS_DIR / "candidates.json").read_text())
-    cands = [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]
+    lock = require_frozen_for(name)  # replication agents: also their rule-derived candidates (H3)
+    frozen = _candidates(name)
+    cands = frozen["candidates"]
     model = _model(seed)
     root = DATA_DIR / "steer" / name / "heldout"
     base_dir = data.split_dir(name, "heldout")  # unsteered held-out collection (seeds 10000-10099) = paired baseline
@@ -643,17 +648,12 @@ def dose_screen(seed: str) -> None:
 def offtarget(seed: str) -> None:
     """Preregistration §6 criterion 3: off-target metrics of each frozen candidate, two-sided paired sign-flip tests,
     Benjamini-Hochberg-corrected across all off-target tests of this agent."""
-    import json
-
     from pacneuron import steer
-    from pacneuron.config import RESULTS_DIR
     from pacneuron.stats import bh, mean_ci, paired_signflip_p_two_sided
     name = MODELS[seed].name
-    derived = RESULTS_DIR / f"candidates_{name}.json"
-    frozen = json.loads((derived if derived.exists() else RESULTS_DIR / "candidates.json").read_text())
     base = steer.arm_metrics(data.split_dir(name, "heldout"))
     rows = []
-    for c in [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]:
+    for c in _candidates(name)["candidates"]:
         arm = steer.arm_metrics(DATA_DIR / "steer" / name / "heldout" / c["name"])
         for mt in ("return", "deaths_per_1k", "pellets_per_1k", "ghosts_per_pill", "in_control"):
             if mt == c["metric"]:
@@ -676,9 +676,7 @@ def attribution(seed: str, n_top: int = 200, n_occ: int = 50) -> None:
     from pacneuron.config import RESULTS_DIR
     from pacneuron.render import capture_frames
     name = MODELS[seed].name
-    derived = RESULTS_DIR / f"candidates_{name}.json"
-    frozen = json.loads((derived if derived.exists() else RESULTS_DIR / "candidates.json").read_text())
-    cands = [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]
+    cands = _candidates(name)["candidates"]
     d = data.split_dir(name, "discovery")
     S = data.load_split(d, acts=("conv3", "fc_pre"))
     model = _model(seed)
@@ -725,7 +723,8 @@ def claim_checks(seed: str, n_occ: int = 50, near_px: float = 12.0) -> None:
     """EXPLORATORY numbers behind prose claims that no other phase reports (discovery data only).
 
     - best_features: which single feature best explains each unit of each set (discovery split-half R², from
-      DATA_DIR/analysis/audit_<model>.npz written by `audit`), e.g. whether random directions mostly track pellets;
+      DATA_DIR/analysis/audit_<model>.npz written by `audit`), e.g. whether random directions mostly track pellets,
+      and the same count restricted to each set's "one-job" units;
     - candidates: for each frozen/derived steering candidate, the frightened share of its active steps vs the base
       rate, and where Ms. Pac-Man is in the n_occ top states that the occlusion map averages over (same selection
       as `attribution`), relative to the map's peak;
@@ -743,16 +742,18 @@ def claim_checks(seed: str, n_occ: int = 50, near_px: float = 12.0) -> None:
     arr = np.load(DATA_DIR / "analysis" / f"audit_{name}.npz")
     best = {}
     for k in ("agent", "random_dirs", "nonneg_mix", "untrained"):
-        c = Counter(names[i] for i in arr[f"{k}_r2_single"].argmax(0))
-        best[k] = {"units": int(sum(c.values())), "top": c.most_common(3)}
+        r1 = arr[f"{k}_r2_single"]
+        c = Counter(names[i] for i in r1.argmax(0))
+        cl = AU.clean_mask(r1, arr[f"{k}_r2_all"])  # which single feature the "one-job" units follow
+        cc = Counter(names[i] for i in r1[:, cl].argmax(0))
+        best[k] = {"units": int(sum(c.values())), "top": c.most_common(3), "clean_units": int(cl.sum()),
+                   "clean_top": cc.most_common(3)}
     d = data.split_dir(name, "discovery")
     S = data.load_split(d, acts=("conv3", "fc_pre"))
     F, ram = S["features"], S["ram"]
-    derived = RESULTS_DIR / f"candidates_{name}.json"
-    frozen = json.loads((derived if derived.exists() else RESULTS_DIR / "candidates.json").read_text())
     att = json.loads((RESULTS_DIR / f"attribution_{name}.json").read_text())["candidates"]
     cands = {}
-    for c in [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]:
+    for c in _candidates(name)["candidates"]:
         spec = c["spec"]
         if spec["site"] == "fc":
             act = np.maximum(S["fc_pre"][:, spec["units"][0]].astype(np.float32), 0)
@@ -803,14 +804,12 @@ def aa_control(seed: str, n_games: int = 50) -> None:
     batch (results/fidelity.json), so "same seed" does not guarantee the same trajectory. This measures how often
     unsteered games stay identical and which paired Δ the batching alone produces on the primary metrics.
     """
-    import json
-
     from pacneuron import steer
-    from pacneuron.config import HELDOUT_SEEDS, RESULTS_DIR
-    from pacneuron.prereg import require_frozen
+    from pacneuron.config import HELDOUT_SEEDS
+    from pacneuron.prereg import require_frozen_for
     from pacneuron.stats import mean_ci
-    lock = require_frozen()
     name = MODELS[seed].name
+    lock = require_frozen_for(name)
     out_dir = DATA_DIR / "steer" / name / "heldout" / "aa_noop"
     seeds = list(HELDOUT_SEEDS[:n_games])
     if not (out_dir / "mazes.pkl").exists():
@@ -825,10 +824,8 @@ def aa_control(seed: str, n_games: int = 50) -> None:
         diff = np.flatnonzero(a[:n] != b[:n])
         first.append(int(diff[0]) if len(diff) else (n if len(a) == len(b) else n))
     identical = [bool(np.array_equal(base[s], arm[s])) for s in seeds]
-    derived = RESULTS_DIR / f"candidates_{name}.json"
-    frozen = json.loads((derived if derived.exists() else RESULTS_DIR / "candidates.json").read_text())
     effects = {}
-    for c in [c for c in frozen["candidates"] if c.get("model", "appo_1111") == name]:
+    for c in _candidates(name)["candidates"]:
         kw = c.get("metric_kwargs", {})
         bm, am = steer.arm_metrics(base_dir, **kw), steer.arm_metrics(out_dir, **kw)
         d = np.array([am[s][c["metric"]] - bm[s][c["metric"]] for s in seeds
@@ -839,3 +836,163 @@ def aa_control(seed: str, n_games: int = 50) -> None:
                                         "identical_action_sequences": int(sum(identical)),
                                         "median_first_divergence_step": float(np.median(first)),
                                         "first_divergence_steps": first, "effects": effects})
+
+
+# Lattice regions (14 x 18 nodes) for the post-hoc occupancy check: quadrants and column/row thirds.
+_REGIONS = {"top-left": (slice(0, 7), slice(0, 9)), "top-right": (slice(0, 7), slice(9, 18)),
+            "bottom-left": (slice(7, 14), slice(0, 9)), "bottom-right": (slice(7, 14), slice(9, 18)),
+            "left third": (slice(None), slice(0, 6)), "middle third": (slice(None), slice(6, 12)),
+            "right third": (slice(None), slice(12, 18)), "top third": (slice(0, 5), slice(None)),
+            "middle-row third": (slice(5, 10), slice(None)), "bottom third": (slice(10, 14), slice(None))}
+_QUADS = ("top-left", "top-right", "bottom-left", "bottom-right")
+
+
+def _rank_low(x: np.ndarray, i: int) -> int:
+    """1-based rank of x[i] when sorted ascending (1 = most negative)."""
+    return int(np.sum(x < x[i])) + 1
+
+
+def _damage_vs_null(base: dict, cand: dict, nulls: list[dict], seeds: list[int]) -> dict:
+    """Candidate vs null arms on the seeds they share: paired Δ return and Δ deaths per 1k in-control steps."""
+    def delta(arm, mt):
+        return float(np.mean([arm[s][mt] - base[s][mt] for s in seeds if s in arm]))
+    out = {"seeds": len(seeds), "n_null": len(nulls)}
+    for mt in ("return", "deaths_per_1k"):
+        c, nd = delta(cand, mt), np.array([delta(n, mt) for n in nulls])
+        worse = nd < c if mt == "return" else nd > c  # nulls that are MORE damaging than the candidate
+        out[mt] = {"candidate_delta": c, "null_median": float(np.median(nd)),
+                   "share_nulls_more_damaging": float(worse.mean())}
+    return out
+
+
+def _occupancy_regions(Cb: np.ndarray, Ca: np.ndarray, n_boot: int) -> dict:
+    """Pooled share of in-control steps in each lattice region, baseline vs steered, with a paired game-bootstrap CI
+    of the difference. Cb, Ca: [G, 14, 18] per-game node counts of the same seeds."""
+    W, one = bootstrap_weights(len(Cb), n_boot, seed=3), np.ones(len(Cb))
+    out = {}
+    for rg, (rs, cs) in _REGIONS.items():
+        def share(C, w):
+            return (w @ C[:, rs, cs].sum((1, 2))) / (w @ C.sum((1, 2)))
+        out[rg] = {"base": float(share(Cb, one)), "steered": float(share(Ca, one)),
+                   "delta": float(share(Ca, one) - share(Cb, one)),
+                   "ci": np.quantile(share(Ca, W) - share(Cb, W), [0.025, 0.975]).tolist()}
+    return out
+
+
+def specificity(seed: str, n_boot: int = 2000) -> None:
+    """POST HOC (added by the 2026-11-01 audit, after every confirmatory result): how specific are the frozen
+    candidates' held-out effects? Reads only the arms that `confirm` wrote (no new games).
+
+    - conv3 candidates: the preregistered approach metric for the target nodes of ALL 49 conv3 cells (is the drop
+      local to the steered cell?), time near each target, region occupancy with game-bootstrap CIs, the open-loop KL
+      rank of the candidate among the 64 channels at its cell (is it simply the strongest perturbation?), damage vs
+      the null arms, navigation (action changes, net displacement), and approach without life-loss windows;
+    - fc candidates: the voted-direction rate in three contexts (trigger / frightened elsewhere / normal mode), the
+      secondary metric of the 99 null arms (confirm had no null for it) and damage vs the null arms;
+    - every candidate: intraclass correlation of the paired primary Δ within start-state clusters, the design effect
+      and the cluster-adjusted normal one-sided p (Holm over the agent's candidates).
+    """
+    import json
+
+    from scipy.stats import norm
+
+    from pacneuron import maze as M
+    from pacneuron import ram as R
+    from pacneuron import steer
+    from pacneuron.config import HELDOUT_SEEDS, RESULTS_DIR
+    from pacneuron.features import in_control
+    from pacneuron.metrics import approach_rate, cell_target_node, context_action_rates, navigation
+    from pacneuron.stats import holm, icc_oneway
+    name = MODELS[seed].name
+    frozen = _candidates(name)
+    conf = {c["name"]: c for c in json.loads((RESULTS_DIR / f"confirm_{name}.json").read_text())["candidates"]}
+    scr = np.load(DATA_DIR / "analysis" / f"screen_{name}.npz")
+    base_dir, root = data.split_dir(name, "heldout"), DATA_DIR / "steer" / name / "heldout"
+    keys = ("ram", "maze", "raw_reward", "life_lost", "game_over", "action")
+    B = {g["seed"]: g for g in data.load_games(base_dir, keys)}
+    bmz = data.load_bank(base_dir).mazes
+    cluster = dict(zip(sorted(B), start_cluster_ids([B[s]["ram"][in_control(B[s]["ram"])][0] for s in sorted(B)])))
+    null_seeds = list(HELDOUT_SEEDS[:frozen["n_null"]])
+
+    def node_counts(g):
+        xy = R.player_xy(g["ram"][in_control(g["ram"])])
+        return np.bincount(M.node_of(xy[:, 0], xy[:, 1]), minlength=M.ROWS * M.COLS).reshape(M.ROWS, M.COLS)
+
+    out, p_adj = {}, []
+    for c in frozen["candidates"]:
+        spec, kw, mt, sign = c["spec"], c.get("metric_kwargs", {}), c["metric"], c["sign"]
+        arm_dir = root / c["name"]
+        A = {g["seed"]: g for g in data.load_games(arm_dir, keys)}
+        amz = data.load_bank(arm_dir).mazes
+        seeds = sorted(A)
+        log.info(f"specificity {name}/{c['name']}: {len(seeds)} paired games")
+        res = {"label": c.get("label", c["name"]), "site": spec["site"], "metric": mt, "sign": sign}
+        # dependence between games that share a start state (primary metric, paired by seed)
+        bm, am = steer.arm_metrics(base_dir, **kw), steer.arm_metrics(arm_dir, **kw)
+        ok = [s for s in seeds if np.isfinite(am[s][mt]) and np.isfinite(bm[s][mt])]
+        d = np.array([am[s][mt] - bm[s][mt] for s in ok])
+        icc, deff = icc_oneway(d, [cluster[s] for s in ok])
+        z = d.mean() / (d.std(ddof=1) / np.sqrt(len(d)))
+        res["dependence"] = {"n": len(d), "clusters": len({cluster[s] for s in ok}), "icc": icc, "design_effect": deff,
+                             "z": float(z), "z_cluster_adjusted": float(z / np.sqrt(deff)),
+                             "p_one_sided_cluster_adjusted": float(norm.sf(sign * z / np.sqrt(deff)))}
+        p_adj.append(res["dependence"]["p_one_sided_cluster_adjusted"])
+        if spec["site"] == "conv3":
+            cell, ch = tuple(spec["cell"]), spec["units"][0]
+            ti = 7 * cell[0] + cell[1]
+            # the preregistered approach metric (and time within 3 steps) for the target node of every conv3 cell
+            ab = np.array([[approach_rate(B[s], bmz, (k // 7, k % 7)) for k in range(49)] for s in seeds])  # [S,49,2]
+            aa = np.array([[approach_rate(A[s], amz, (k // 7, k % 7)) for k in range(49)] for s in seeds])
+            dap = np.nanmean(aa[..., 0] - ab[..., 0], 0)  # paired Δ over seeds where both are defined (as confirm)
+            assert abs(dap[ti] - conf[c["name"]]["effects"][mt]["delta"]) < 1e-9, "target-cell Δ must equal confirm's"
+            near_rel = np.nanmean(aa[..., 1], 0) / np.nanmean(ab[..., 1], 0) - 1
+            res["cells"] = {"approach_delta": dap.reshape(7, 7).round(5).tolist(),
+                            "near_rel_change": near_rel.reshape(7, 7).round(5).tolist()}
+            res["target"] = {"approach_delta": float(dap[ti]), "approach_rank": _rank_low(dap, ti),
+                             "median_approach_delta": float(np.median(dap)),
+                             "near_base": float(np.nanmean(ab[:, ti, 1])), "near_steered": float(np.nanmean(aa[:, ti, 1])),
+                             "near_rel_change": float(near_rel[ti]), "near_rank": _rank_low(near_rel, ti),
+                             "median_near_rel_change": float(np.median(near_rel))}
+            res["regions"] = _occupancy_regions(np.stack([node_counts(B[s]) for s in seeds]),
+                                                np.stack([node_counts(A[s]) for s in seeds]), n_boot)
+            tr, tc = divmod(cell_target_node(cell, bmz[int(B[seeds[0]]["maze"][0])]), M.COLS)
+            res["steered_quadrant"] = _QUADS[2 * int(tr >= 7) + int(tc >= 9)]
+            res["most_vacated_quadrant"] = min(_QUADS, key=lambda q: res["regions"][q]["delta"])
+            # open-loop strength of the patch vs the other 63 channels at the same cell (discovery-state screen)
+            kl, att = scr["kl"][:, cell[0], cell[1]], scr["attraction_junction"][:, cell[0], cell[1]]
+            res["open_loop"] = {"kl": float(kl[ch]), "kl_rank": int(np.sum(kl > kl[ch])) + 1,
+                                "kl_median_other": float(np.median(np.delete(kl, ch))),
+                                "kl_ratio_to_median_other": float(kl[ch] / np.median(np.delete(kl, ch))),
+                                "repel_rank": _rank_low(att, ch)}
+            nb, na = {s: navigation(B[s], bmz) for s in seeds}, {s: navigation(A[s], amz) for s in seeds}
+            res["navigation"] = {k: _paired_effect(nb, na, k, 1) for k in ("action_change", "displacement")}
+            xb = {s: {"approach": approach_rate(B[s], bmz, cell, exclude_loss=True)[0]} for s in seeds}
+            xa = {s: {"approach": approach_rate(A[s], amz, cell, exclude_loss=True)[0]} for s in seeds}
+            res["approach_excluding_loss"] = _paired_effect(xb, xa, "approach", sign)
+            nulls = [steer.arm_metrics(root / f"null_{c['null_group']}_{k:03d}") for k in range(len(c["null_specs"]))]
+            res["damage_vs_null"] = _damage_vs_null(steer.arm_metrics(base_dir), steer.arm_metrics(arm_dir), nulls,
+                                                    null_seeds)
+        elif "secondary_metric" in c:
+            sm = c["secondary_metric"]
+            skw = sm["metric_kwargs"]
+            direction = skw["trigger"].removeprefix("dir_edible_")
+            rb = {s: context_action_rates(B[s], bmz, direction, skw["action_set"]) for s in seeds}
+            ra = {s: context_action_rates(A[s], amz, direction, skw["action_set"]) for s in seeds}
+            res["contexts"] = {"direction": direction, "action_set": skw["action_set"],
+                               **{k: _paired_effect(rb, ra, k, sm["sign"]) for k in rb[seeds[0]]}}
+            # the secondary metric for the 99 null fc ablations (20 seeds each) and the candidate on the same seeds
+            base_s, cand_s = steer.arm_metrics(base_dir, **skw), steer.arm_metrics(arm_dir, **skw)
+            nulls = [steer.arm_metrics(root / f"null_{c['null_group']}_{k:03d}", **skw) for k in range(len(c["null_specs"]))]
+            nd = np.array([_paired_effect(base_s, n, sm["metric"], sm["sign"]).get("delta", np.nan) for n in nulls])
+            cd = _paired_effect(base_s, {s: cand_s[s] for s in null_seeds}, sm["metric"], sm["sign"])["delta"]
+            res["secondary_vs_null"] = {"metric": sm["metric"], "seeds": len(null_seeds), "candidate_delta": cd,
+                                        "null_deltas": nd.tolist(),
+                                        "null_q95_signed": float(np.nanquantile(sm["sign"] * nd, 0.95)),
+                                        "null_ge": int(np.sum(sm["sign"] * nd >= sm["sign"] * cd))}
+            res["damage_vs_null"] = _damage_vs_null(base_s, cand_s, nulls, null_seeds)
+        out[c["name"]] = res
+    for r, p in zip(out.values(), holm(p_adj)):
+        r["dependence"]["p_holm_cluster_adjusted"] = float(p)
+    sizes = np.bincount(list(cluster.values())).tolist()
+    write_result(f"specificity_{name}", {"post_hoc": True, "note": "added after all confirmatory results; no new games",
+                                         "start_clusters": {"n": len(sizes), "sizes": sizes}, "candidates": out})

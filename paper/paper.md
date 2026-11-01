@@ -22,29 +22,46 @@ protocol.
 **Not "already clean".** On held-out games, the fraction of alive fc neurons with one main job is
 <!--n:appo_1111:h1_agent-->0.8%<!--/n-->, vs <!--n:appo_1111:h1_random_dirs-->0.2%<!--/n--> for random directions and
 <!--n:appo_1111:h1_untrained-->9.4%<!--/n--> for an untrained network. The preregistered privileged-basis test is
-<!--n:appo_1111:h1_verdict-->supported<!--/n--> for agent 1111, but the effect is trivially small. It is
-<!--n:appo_2222:h1_verdict-->not supported<!--/n--> for agent 2222 and <!--n:appo_3333:h1_verdict-->not supported<!--/n-->
-for agent 3333. Exploratorily, a lookup table over Ms. Pac-Man's maze position × heading explains a median
+<!--n:appo_1111:h1_verdict-->supported<!--/n--> for agent 1111, but the effect is trivially small:
+<!--n:appo_1111:h1_n_clean:agent-->3 of 367<!--/n--> neurons vs <!--n:appo_1111:h1_n_clean:random_dirs-->1 of 512<!--/n-->
+random directions. It is <!--n:appo_2222:h1_verdict-->not supported<!--/n--> for agent 2222 and
+<!--n:appo_3333:h1_verdict-->not supported<!--/n--> for agent 3333. The agent is significantly *less* clean than
+non-negative unit mixtures in agents 1111 and 2222, and than the untrained network in all three. Exploratorily,
+every one-job unit, in every set, follows a single slow global variable (pellets left or the maze id). A lookup table over Ms. Pac-Man's maze position × heading explains a median
 out-of-sample R² of <!--n:appo_1111:place_heading_median-->0.20<!--/n--> per neuron, vs
 <!--n:appo_1111:median_best_disc-->0.03<!--/n--> for the best single feature, which suggests conjunctive, place-like
 codes.
 
-**One unit, a no-go zone.** Two steering candidates were frozen before any held-out data. Setting a single conv3
-unit (channel 18 at one spatial position) to its 99th percentile makes the agent avoid the corresponding maze
-region: approach rate <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> →
-<!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->, Holm p <!--n:appo_1111:c3_ch18_cell56:p-->0.0002<!--/n-->. This
-effect is stronger than that of each of the 63 other channels at that position, each set to its own 99th percentile
-(the preregistered H2 passes). Ablating fc neuron 453, which votes UP, reduces moving up toward edible ghosts but does
-not significantly reduce ghosts eaten per power pill (H2 fails for this candidate). Its best direction label ("edible
-ghost is up") does not survive confound control.
+**One unit steers, but not locally.** Two steering candidates were frozen before any held-out data. Setting a single
+conv3 unit (channel 18 at one spatial position) to its 99th percentile lowers the preregistered approach rate toward
+that position: <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> →
+<!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->, Holm p <!--n:appo_1111:c3_ch18_cell56:p-->0.0002<!--/n-->. The
+effect is stronger than that of each of the 63 other channels at that position, each set to its own 99th
+percentile, so the preregistered H2 passes. Post-hoc checks on the same games limit what this shows:
+
+- approach toward almost every maze location falls (the steered cell ranks
+  <!--n:appo_1111:c3_ch18_cell56:spec_rank-->28 of 49<!--/n-->);
+- the agent vacates the bottom-left, not the steered bottom-right;
+- the unit is the strongest perturbation at its cell (open-loop KL rank
+  <!--n:appo_1111:c3_ch18_cell56:spec_kl_rank-->1 of 64<!--/n-->).
+
+It is a causal handle on navigation, not a local "no-go zone".
+
+Ablating fc neuron 453, which votes UP, reduces moving up toward edible ghosts. The reduction is specific to that
+context, and no null ablation matches it. It does not significantly reduce ghosts eaten per power pill, so H2 fails
+for this candidate. Its best direction label ("edible ghost is up") does not survive confound control.
 
 **Replication.** Frozen selection rules applied to the other two agents give the following (H3):
 
-- no-go-zone rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n-->;
+- most-repelling-patch rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n--> as preregistered. Post hoc, it always
+  selects the strongest patch at its cell. The agent clearly leaves the steered region only in agent 3333 (partly
+  in 2222);
 - ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n--> (exploratory, because fc 453
   failed H2).
 
-All tests, deviations, errata and negative results are reported.
+All tests, deviations, errata and negative results are reported. That includes an independent audit whose post-hoc
+checks (Section 4.3, `reports/00_summary.md` errata 11–16) correct an earlier "no-go zone" reading of the conv3
+result.
 
 # 1. Introduction
 
@@ -238,7 +255,7 @@ no published work has steered individual neurons of a reward-trained Ms. Pac-Man
 | non-negative unit mixtures (control b) | 512 | 1.4% [1.2%, 1.8%] | 0.720 | 0.053 |
 | untrained network (control c) | 499 | 9.4% [5.2%, 11.6%] | 0.537 | 0.096 |
 
-H1 test (agent minus random directions): 0.6% [0.2%, 0.6%]; H1 supported.
+H1 test (agent minus random directions): 0.6% [0.2%, 0.6%]; H1 supported. One-job units: agent 3 of 367, random directions 1 of 512. Secondary controls (not part of the verdict): agent minus non-negative mixtures -0.5% [-0.9%, -0.4%]; agent minus untrained network -8.6% [-10.8%, -4.4%].
 <!-- END:h1_appo_1111 -->
 
 ![](../figures/clean_fraction_appo_1111.png)
@@ -251,6 +268,16 @@ so these CIs are coarse. The threshold sweep shows that agent 1111's small advan
 at a looser ratio threshold: at a ratio of 0.5, random directions score
 <!--n:appo_1111:sweep_0.3_0.5:random_dirs-->8.0%<!--/n--> vs the agent's
 <!--n:appo_1111:sweep_0.3_0.5:agent-->1.4%<!--/n-->.
+
+What the one-job units are (exploratory, discovery split-half). Every one-job unit follows one slow global variable:
+
+- agent: <!--n:appo_1111:clean_feat:agent-->n_pellets for 3 of 3<!--/n-->;
+- random directions: <!--n:appo_1111:clean_feat:random_dirs-->n_pellets for 3 of 3<!--/n-->;
+- non-negative mixtures: <!--n:appo_1111:clean_feat:nonneg_mix-->n_pellets for 8 of 8<!--/n-->;
+- untrained network: <!--n:appo_1111:clean_feat:untrained-->maze for 53 of 53<!--/n-->.
+
+With this dictionary the criterion mostly detects units that follow pellets left or the maze colour, so the H1
+verdict in either direction says little about semantic interpretability.
 
 <!-- BEGIN:h1robust_appo_1111 -->
 | unit set | one-job fraction | game-bootstrap 95% CI | start-state-cluster 95% CI |
@@ -322,6 +349,60 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
 
 ![](../figures/occupancy_appo_1111_c3_ch18_cell56.png)
 
+**Post-hoc specificity checks** (added by an independent audit after all confirmatory results; same held-out games,
+no new games; `specificity` phase).
+
+The preregistered approach metric only scores the steered cell's target node. We therefore computed it for the
+target nodes of all 49 conv3 cells:
+
+- **The conv3 drop is not local.** The steered cell ranks
+  <!--n:appo_1111:c3_ch18_cell56:spec_rank-->28 of 49<!--/n--> (1 = largest drop), and the median cell's Δ is
+  <!--n:appo_1111:c3_ch18_cell56:spec_median-->-0.068<!--/n-->.
+- **The agent leaves a different region.** It vacates the
+  <!--n:appo_1111:c3_ch18_cell56:spec_vacated-->bottom-left<!--/n--> quadrant
+  (<!--n:appo_1111:c3_ch18_cell56:spec_region:bottom-left-->0.264 → 0.182<!--/n--> of in-control time). The steered
+  <!--n:appo_1111:c3_ch18_cell56:spec_quad-->bottom-right<!--/n--> barely changes
+  (<!--n:appo_1111:c3_ch18_cell56:spec_region:bottom-right-->0.268 → 0.254<!--/n-->).
+- **The null is weaker.** Channel 18's open-loop KL at the cell ranks
+  <!--n:appo_1111:c3_ch18_cell56:spec_kl_rank-->1 of 64<!--/n-->
+  (<!--n:appo_1111:c3_ch18_cell56:spec_kl_ratio-->10×<!--/n--> the median of the other 63). Its return loss exceeds
+  <!--n:appo_1111:c3_ch18_cell56:spec_damage-->100.0% of its 63 null units<!--/n-->. The preregistered null matched
+  the dose rule, not the perturbation strength.
+- **Navigation degrades.** The action-change rate goes <!--n:appo_1111:c3_ch18_cell56:spec_change-->0.483 → 0.565<!--/n-->,
+  and the 8-step net displacement goes <!--n:appo_1111:c3_ch18_cell56:spec_disp-->2.23 → 1.97<!--/n--> lattice steps.
+  Windows with a life loss do not explain the drop (Δ without them
+  <!--n:appo_1111:c3_ch18_cell56:spec_excl_loss-->-0.065<!--/n-->).
+
+The fc 453 ablation, by contrast, is context-specific. P(UP) changes by
+<!--n:appo_1111:fc453_ablate:spec_ctx:trigger-->Δ -0.190 [-0.209, -0.171]<!--/n--> when the nearest edible ghost is
+up, <!--n:appo_1111:fc453_ablate:spec_ctx:frightened_elsewhere_open-->Δ -0.028 [-0.044, -0.013]<!--/n--> in other frightened states with
+up open, and <!--n:appo_1111:fc453_ablate:spec_ctx:normal_open-->Δ 0.030 [0.012, 0.049]<!--/n--> in normal mode.
+<!--n:appo_1111:fc453_ablate:spec_sec_null-->0 of 99<!--/n--> null ablations reduce the secondary metric as much
+(seeds 10000–10019).
+
+<!-- BEGIN:specificity_appo_1111 -->
+| conv3 candidate (post hoc) | Δ approach, steered cell (rank of 49, 1 = largest drop) | median Δ over all 49 cells | time within 3 steps of target (rank of 49) | occupancy of the steered cell's quadrant | most vacated quadrant |
+|---|---|---|---|---|---|
+| conv3 channel 18 set to its p99 at cell (5,6) | -0.063 (28) | -0.068 | 0.062 → 0.057, -9% (20) | bottom-right: 0.268 → 0.254 (Δ -0.014 [-0.037, 0.010]) | bottom-left: 0.264 → 0.182 (Δ -0.082 [-0.110, -0.056]) |
+
+| conv3 candidate (post hoc) | open-loop KL at its cell: rank of 64 (× median of the other 63) | nulls with a larger return loss (seeds 10000–10019) | action-change rate | 8-step net displacement (lattice steps) | Δ approach without life-loss windows |
+|---|---|---|---|---|---|
+| conv3 channel 18 set to its p99 at cell (5,6) | 1 (10×) | 0.0% of 63 | 0.483 → 0.565 (Δ 0.082 [0.060, 0.104]) | 2.23 → 1.97 (Δ -0.26 [-0.30, -0.22]) | -0.065 |
+
+| fc candidate (post hoc) | P(voted direction) when the nearest edible ghost is in that direction | frightened, edible ghost elsewhere, direction open | normal mode, direction open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
+|---|---|---|---|---|
+| fc neuron 453 zero-ablated (up) | 0.505 → 0.315 (Δ -0.190 [-0.209, -0.171]) | 0.430 → 0.402 (Δ -0.028 [-0.044, -0.013]) | 0.342 → 0.372 (Δ 0.030 [0.012, 0.049]) | Δ -0.194: 0 of 99 / 0.004 |
+
+Between-game dependence: the held-out games fall into 4 start-state clusters (sizes 24, 24, 25, 27).
+
+| candidate | ICC of paired Δ within clusters | design effect | z | cluster-adjusted z | cluster-adjusted Holm p |
+|---|---|---|---|---|---|
+| fc neuron 453 zero-ablated | 0.072 | 1.83 | -0.88 | -0.65 | 0.2579 |
+| conv3 channel 18 set to its p99 at cell (5,6) | 0.125 | 2.44 | -9.39 | -6.00 | < 0.0001 |
+<!-- END:specificity_appo_1111 -->
+
+![](../figures/specificity_appo_1111_c3_ch18_cell56.png)
+
 Attribution of the candidate units: exact upstream contributions, occlusion peak, and confound-controlled label
 checks (stratified AUROC within frightened × player-region strata; unique R² = drop-one loss of the
 gradient-boosting ceiling):
@@ -337,15 +418,20 @@ gradient-boosting ceiling):
 
 ![](../figures/occlusion_appo_1111_fc453_ablate.png)
 
-The no-go-zone unit depends on input inside its own receptive field: Ms. Pac-Man is within 12 px of its occlusion
-peak in <!--n:appo_1111:c3_ch18_cell56:near_peak-->98.0% of its 50 top states<!--/n--> (exploratory). fc 453's best
-direction label ("edible ghost is up") does not survive confound control. The unit is active mostly in frightened
-mode (<!--n:appo_1111:fc453_ablate:fright_active-->88.8%<!--/n--> of its active steps vs
+The conv3 unit's *activation* depends on input inside its own receptive field: Ms. Pac-Man is within 12 px of its
+occlusion peak in <!--n:appo_1111:c3_ch18_cell56:near_peak-->98.0% of its 50 top states<!--/n--> (exploratory). Its
+*steering effect*, as shown above, is not local.
+
+fc 453's best direction label ("edible ghost is up") does not survive confound control. The unit is active mostly in
+frightened mode (<!--n:appo_1111:fc453_ablate:fright_active-->88.8%<!--/n--> of its active steps vs
 <!--n:appo_1111:fc453_ablate:fright_base-->40.3%<!--/n--> overall), and Ms. Pac-Man is near its occlusion peak in
 <!--n:appo_1111:fc453_ablate:near_peak-->80.0% of its 50 top states<!--/n-->. Those top states largely repeat one
 early-game moment (<!--n:appo_1111:fc453_ablate:top_repeat-->86.0% of them within 10 steps of step 379, from 46 games<!--/n-->),
-so its occlusion map describes one situation. We therefore attribute its ablation effect to its UP vote rather than
-to a ghost-direction representation.
+so its occlusion map describes one situation.
+
+Its ablation acts through its UP vote, and the context control above shows where: the vote matters mainly when an
+edible ghost is up. This is post-hoc evidence, from one agent, that the unit's behavioural role is "chase the edible
+ghost upward", even though no single "ghost is up" feature predicts its activation well.
 
 Discovery-phase evidence that led to the candidates (exploratory):
 
@@ -387,8 +473,26 @@ Discovery-phase evidence that led to the candidates (exploratory):
 | set the most repelling conv3 (channel, cell) to its p99 | appo_2222 | conv3 channel 3 set to its p99 at cell (0, 0) | -0.034 [-0.043, -0.026] | 0.0002 | 0 of 63 | yes |
 | set the most repelling conv3 (channel, cell) to its p99 | appo_3333 | conv3 channel 46 set to its p99 at cell (5, 6) | -0.216 [-0.232, -0.200] | 0.0002 | 0 of 63 | yes |
 
-A rule replicates if its unit passes H2 criteria 1-2 in both agents and the within-agent Holm p-values stay < 0.05 after a further Holm correction over the two agents (preregistration §7, "Holm over seeds"). Preregistration §7 defines H3 only for candidates that passed H2; fc 453 failed H2 in agent 1111, so the fc-ablation rule's replication is exploratory. p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test (1/10,001); 0.0002 is that floor after Holm over 2 tests, so it means p ≤ that value.
+A rule replicates if its unit passes H2 criteria 1-2 in both agents and the within-agent Holm p-values stay < 0.05 after a further Holm correction over the two agents (preregistration §7, "Holm over seeds"). Preregistration §7 defines H3 only for candidates that passed H2; fc 453 failed H2 in agent 1111, so the fc-ablation rule's replication is exploratory. p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test (1/10,001); 0.0002 is that floor after Holm over 2 tests, so it means p ≤ that value. Post hoc (`specificity` phase): the conv3 rule picks the most repelling patch of the open-loop screen, and that patch's open-loop KL ranks 1 of 64 (appo_1111), 1 of 64 (appo_2222), 1 of 64 (appo_3333) among the channels at its cell, so the 63 null channels are all weaker open-loop perturbations; beating them does not show that the effect is specific to that channel's content.
 <!-- END:h3 -->
+
+Post hoc, the same specificity checks in the replication agents show a mixed picture:
+
+- **Not local in either agent.** The steered cell's approach drop ranks
+  <!--n:appo_2222:c3_ch3_cell00:spec_rank-->28 of 49<!--/n--> (2222) and
+  <!--n:appo_3333:c3_ch46_cell56:spec_rank-->21 of 49<!--/n--> (3333).
+- **Strongest perturbation in both.** The selected patch's open-loop KL ranks
+  <!--n:appo_2222:c3_ch3_cell00:spec_kl_rank-->1 of 64<!--/n--> and
+  <!--n:appo_3333:c3_ch46_cell56:spec_kl_rank-->1 of 64<!--/n--> at its cell.
+- **Region avoided clearly in 3333, partly in 2222.** In agent 3333 the agent abandons the right third of the maze
+  (<!--n:appo_3333:c3_ch46_cell56:spec_region:right_third-->0.336 → 0.049<!--/n-->), which contains the steered cell.
+  Agent 2222 leaves the whole top half (top third
+  <!--n:appo_2222:c3_ch3_cell00:spec_region:top_third-->0.348 → 0.259<!--/n-->). Its most vacated quadrant is the
+  <!--n:appo_2222:c3_ch3_cell00:spec_vacated-->top-right<!--/n-->, while the steered cell is in the top-left.
+
+Full tables are in `reports/05_replication.md`.
+
+![](../figures/specificity_appo_3333_c3_ch46_cell56.png)
 
 Steering per agent (held-out):
 
@@ -416,6 +520,12 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
 
 - **Not under single-feature labels.** With a 40-feature dictionary of single game variables, almost no fc neuron
   of these agents has one main job, and the agents are no cleaner than random directions in a meaningful way.
+- **What the criterion detects.** Every one-job unit follows one slow global variable. For the untrained network
+  that is the maze id (<!--n:appo_1111:clean_feat:untrained-->maze for 53 of 53<!--/n-->), plausibly through the
+  wall colour. For the agent it is pellets left (<!--n:appo_1111:clean_feat:agent-->n_pellets for 3 of 3<!--/n-->).
+  This is why the untrained network scores highest, and why the agent is less clean than non-negative unit mixtures
+  (agent minus mixtures <!--n:appo_1111:h1_diff_nonneg_mix-->-0.5% [-0.9%, -0.4%]<!--/n-->). With this dictionary
+  the criterion measures something closer to "follows a slow global variable" than to semantic selectivity.
 - **The basis is still not arbitrary.**
   - Random directions score *higher* best-single-feature R² than neurons (Fig. R²). Dense mixtures pick up slow
     global variables: pellets left is the best single feature for
@@ -435,14 +545,21 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
 
 **Can single units steer behaviour?**
 
-- **Yes, causally and specifically, but not cleanly.** A single conv3 unit's activity is enough to repel the agent
-  from a maze region. No other channel at that position does this at its own p99 dose, and the same selection rule
-  finds such a unit in both independently trained agents (H3).
-- **Steering is destructive.** The agent eats fewer pellets per step and dies more. Single-unit steering here is a
-  blunt instrument, not a precise control knob.
+- **Causally yes; specifically, only partly.**
+  - *What holds.* Patching a single conv3 unit reliably changes behaviour on held-out games, beyond all 63 other
+    channels at the same position, and the same selection rule finds such a unit in both other agents (H3).
+  - *What the post-hoc checks remove.* The approach drop is not local to the steered cell. The selected unit is
+    always the strongest perturbation at its cell, so the dose-rule null does not control for strength. The agent
+    clearly leaves the steered region only in agent 3333, partly in 2222, and not in 1111.
+  - *Reading.* The conv3 result is best described as "the strongest single-cell patch disrupts goal-directed
+    navigation". It is not "a unit that encodes a place to avoid". A strength-matched null (doses chosen to match
+    the candidate's open-loop KL, on fresh seeds) is the experiment that could separate the two; we did not run it.
+- **Steering is destructive.** Every frozen candidate in every agent raises deaths per 1,000 steps and lowers the
+  return (off-target tables). Under the conv3 patch, agents 1111 and 3333 also dither more; agent 2222 does not.
+  Single-unit steering here is a blunt instrument, not a precise control knob.
 - **Mechanism vs outcome.** The fc ablation shows a gap between mechanism and outcome. The predicted local
-  behaviour ("go toward the edible ghost in direction d", a secondary metric without a null comparison) changes
-  strongly in agents 1111 (<!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n-->) and
+  behaviour ("go toward the edible ghost in direction d", a secondary metric; post hoc, no null ablation matches it,
+  and it is concentrated in that context) changes strongly in agents 1111 (<!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n-->) and
   3333 (<!--n:appo_3333:fc351_ablate:sec-->0.476 → 0.307 (Δ -0.169 [-0.188, -0.149])<!--/n-->), but barely in agent 2222
   (<!--n:appo_2222:fc379_ablate:sec-->0.549 → 0.526 (Δ -0.023 [-0.045, 0.001])<!--/n-->). The global outcome (ghosts
   eaten per pill) changes little in agent 1111, falls in agent 2222, and *rises* in agent 3333. Removing one
@@ -468,6 +585,9 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
    held-out games.
 4. A preregistered difference test needs a minimum effect size. Our H1 criterion was "passed" by a difference of
    <!--n:appo_1111:h1_diff-->0.6% [0.2%, 0.6%]<!--/n-->.
+5. A behavioural metric that scores one target can pass a null test without being specific to that target. Score
+   the same metric on control targets (here all 49 cells), and match the null on perturbation strength, not only
+   on the dose rule.
 
 # 6. Limitations
 
@@ -489,9 +609,17 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
   the raw byte. Masking it (exploratory) raises one feature's split-half R² by at most
   <!--n:appo_1111:mask_max_gain-->0.047<!--/n--> and makes no unit "clean"
   (<!--n:appo_1111:mask_newly_clean-->0<!--/n--> units).
-- **Nulls and clusters.** Each null unit is estimated from 20 games against the candidate's 50, which makes the
-  specificity criterion conservative. The start-state-cluster bootstrap has only
-  <!--n:appo_1111:n_start_groups-->4<!--/n--> clusters.
+- **Nulls and clusters.** Each null unit is estimated from 20 games against the candidate's 50, which widens the
+  null distribution and so raises the bar for the specificity criterion. The conv3 null matched the dose rule, not
+  perturbation strength: the selected patch is always the strongest at its cell (Section 4.3). The
+  start-state-cluster bootstrap has only <!--n:appo_1111:n_start_groups-->4<!--/n--> clusters. The intraclass
+  correlation of the paired Δ within clusters is <!--n:spec_icc_range-->0.000–0.125<!--/n-->. With a design-effect
+  correction, <!--n:spec_passes_survive-->every preregistered pass stays below 0.05<!--/n-->; the closest is
+  <!--n:spec_closest_pass-->fc379_ablate in appo_2222 (cluster-adjusted Holm p 0.0112)<!--/n-->.
+- **Metric construct validity.** The preregistered approach metric scores one target node. Post hoc it falls for
+  almost every node, so a pass on it does not show spatial specificity.
+- **Post-hoc analyses.** The specificity, context and dependence checks were added by an audit after every
+  confirmatory result was known. They use no new games, but they are exploratory.
 - **Occlusion.** Maps average a unit's 50 top states. For fc 453 these mostly repeat one early-game moment, and
   occlusion cannot separate Ms. Pac-Man from the maze patch she occupies.
 - **Feature dictionary.** The one-job criterion depends on a finite 40-feature dictionary of *single* variables, so
@@ -510,10 +638,16 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
 **Clean?** In three reward-trained Ms. Pac-Man agents, individual neurons are not "already clean" with respect to
 exact single game variables. They are sparse and, by exploratory evidence, conjunctive, place-like codes.
 
-**Steerable?** Yes, causally and specifically. A single conv3 unit creates a no-go zone beyond all matched null
-units, and its selection rule replicated in both other agents. Zero-ablating a single fc unit reduces a predicted
-piece of ghost-chasing (moving up toward an edible ghost) without significantly changing ghosts eaten. These effects
-come with substantial collateral damage.
+**Steerable?** Causally yes, specifically only in part.
+
+- *conv3.* A single conv3 patch passes the preregistered steering test beyond all 63 dose-matched null channels,
+  and its selection rule replicated in both other agents. Post-hoc checks show what it does: it is the strongest
+  perturbation at its cell and disrupts navigation across the maze. It makes the agent clearly avoid the steered
+  region in one of three agents (3333), and partly in a second (2222).
+- *fc.* Zero-ablating a single fc unit reduces a predicted piece of ghost-chasing (moving up toward an edible
+  ghost). That reduction is specific to its context and to the unit, but it does not significantly change ghosts
+  eaten.
+- *Cost.* These effects come with substantial collateral damage.
 
 **Toolkit.** The fidelity-checked models, RAM ground truth, preregistration and microscope make these agents a
 convenient testbed for future work: conjunctive dictionaries, sparse autoencoders, and other algorithms.
