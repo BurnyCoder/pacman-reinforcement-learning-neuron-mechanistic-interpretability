@@ -35,10 +35,12 @@ rule*, applied to another agent's own discovery data, find a unit whose steering
 | set the most repelling conv3 (channel, cell) to its p99 | appo_2222 | conv3 channel 3 set to its p99 at cell (0, 0) | -0.034 [-0.043, -0.026] | 0.0002 | 0 of 63 | yes |
 | set the most repelling conv3 (channel, cell) to its p99 | appo_3333 | conv3 channel 46 set to its p99 at cell (5, 6) | -0.216 [-0.232, -0.200] | 0.0002 | 0 of 63 | yes |
 
-A rule replicates if its unit passes H2 criteria 1-2 in both agents and the within-agent Holm p-values stay < 0.05 after a further Holm correction over the two agents (preregistration §7, "Holm over seeds"). Preregistration §7 defines H3 only for candidates that passed H2; fc 453 failed H2 in agent 1111, so the fc-ablation rule's replication is exploratory. p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test (1/10,001); 0.0002 is that floor after Holm over 2 tests, so it means p ≤ that value.
+A rule replicates if its unit passes H2 criteria 1-2 in both agents and the within-agent Holm p-values stay < 0.05 after a further Holm correction over the two agents (preregistration §7, "Holm over seeds"). Preregistration §7 defines H3 only for candidates that passed H2; fc 453 failed H2 in agent 1111, so the fc-ablation rule's replication is exploratory. p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip test (1/10,001); 0.0002 is that floor after Holm over 2 tests, so it means p ≤ that value. Post hoc (`specificity` phase): the conv3 rule picks the most repelling patch of the open-loop screen, and that patch's open-loop KL ranks 1 of 64 (appo_1111), 1 of 64 (appo_2222), 1 of 64 (appo_3333) among the channels at its cell, so the 63 null channels are all weaker open-loop perturbations; beating them does not show that the effect is specific to that channel's content.
 <!-- END:h3 -->
 
-- "No-go zone" rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n-->.
+- Most-repelling-patch rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n--> as preregistered (approach to the
+  steered cell's target falls beyond all 63 null channels in both agents). Post-hoc checks show that the effect is
+  broad navigation damage by the strongest patch, not a local avoidance of the steered cell (see Interpretation).
 - Ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n-->.
 
 ### Agent 2222
@@ -69,7 +71,7 @@ One-job test on held-out games (H1, confirmatory):
 | non-negative unit mixtures (control b) | 512 | 1.4% [1.2%, 1.6%] | 0.770 | 0.046 |
 | untrained network (control c) | 500 | 10.2% [6.6%, 13.2%] | 0.550 | 0.091 |
 
-H1 test (agent minus random directions): 0.1% [-0.3%, 0.5%]; H1 not supported.
+H1 test (agent minus random directions): 0.1% [-0.3%, 0.5%]; H1 not supported. One-job units: agent 4 of 380, random directions 5 of 512. Secondary controls (not part of the verdict): agent minus non-negative mixtures -0.3% [-0.6%, -0.1%]; agent minus untrained network -9.1% [-12.4%, -5.5%].
 <!-- END:h1_appo_2222 -->
 
 Robustness of H1 (start-state clusters, threshold sweep):
@@ -147,7 +149,7 @@ One-job test on held-out games (H1, confirmatory):
 | non-negative unit mixtures (control b) | 512 | 0.0% [0.0%, 0.0%] | 0.736 | 0.055 |
 | untrained network (control c) | 501 | 10.4% [8.2%, 12.4%] | 0.546 | 0.096 |
 
-H1 test (agent minus random directions): 0.0% [0.0%, 0.0%]; H1 not supported.
+H1 test (agent minus random directions): 0.0% [0.0%, 0.0%]; H1 not supported. One-job units: agent 0 of 420, random directions 0 of 512. Secondary controls (not part of the verdict): agent minus non-negative mixtures 0.0% [0.0%, 0.0%]; agent minus untrained network -10.4% [-12.4%, -8.2%].
 <!-- END:h1_appo_3333 -->
 
 Robustness of H1 (start-state clusters, threshold sweep):
@@ -207,19 +209,91 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
 
 ## Interpretation
 
-### No-go-zone rule: replicates in both new agents (3 of 3 agents in total)
-- **What the rule picks.** "Set the most repelling conv3 (channel, cell) of the open-loop screen to its p99"
-  finds, in every agent, a single unit whose activity repels the agent from the corresponding maze region:
+### Most-repelling-patch rule: replicates as preregistered in both new agents (3 of 3 agents in total)
+- **What the rule picks.** "Set the most repelling conv3 (channel, cell) of the open-loop screen to its p99". In
+  every agent, the selected unit lowers the preregistered approach rate toward its cell's target node:
   - agent 2222: channel 3 at the top-left cell;
   - agent 3333: channel 46 at the same lower-right cell as agent 1111's channel 18.
 - **Effect sizes.** They vary several-fold between agents; agent 3333's is the largest (see the table). In each
   agent the unit is stronger than all 63 other channels at the same position, each set to its own p99.
 - **Side effects.** In every agent the steered agent dies more often per 1,000 steps (off-target tables).
-- **How general.** The frozen rule found such a unit in all three independently trained agents. This suggests a
-  regular product of this training recipe rather than an accident of one network. Three agents from one recipe
+- **Post-hoc specificity checks** (audit of 2026-11-01, same held-out games; tables below):
+  - *Strongest perturbation.* The selected patch has the largest open-loop KL at its cell in agent 2222
+    (<!--n:appo_2222:c3_ch3_cell00:spec_kl_rank-->1 of 64<!--/n-->,
+    <!--n:appo_2222:c3_ch3_cell00:spec_kl_ratio-->33×<!--/n--> the median of the others) and agent 3333
+    (<!--n:appo_3333:c3_ch46_cell56:spec_kl_rank-->1 of 64<!--/n-->,
+    <!--n:appo_3333:c3_ch46_cell56:spec_kl_ratio-->34×<!--/n-->). Its return loss exceeds that of
+    <!--n:appo_2222:c3_ch3_cell00:spec_damage-->100.0% of its 63 null units<!--/n--> (2222) and
+    <!--n:appo_3333:c3_ch46_cell56:spec_damage-->98.4% of its 63 null units<!--/n--> (3333). The rule selects the
+    strongest perturbation, so beating the 63 weaker null channels is close to built in.
+  - *Not local to the steered cell.* Among the 49 cell targets, the steered cell's approach drop ranks
+    <!--n:appo_2222:c3_ch3_cell00:spec_rank-->28 of 49<!--/n--> (2222) and
+    <!--n:appo_3333:c3_ch46_cell56:spec_rank-->21 of 49<!--/n--> (3333). The median cell drops by
+    <!--n:appo_2222:c3_ch3_cell00:spec_median-->-0.036<!--/n--> and <!--n:appo_3333:c3_ch46_cell56:spec_median-->-0.178<!--/n-->.
+  - *Where the agent goes.* In agent 3333 the agent does leave the steered region. Its share of time in the right
+    third of the maze goes <!--n:appo_3333:c3_ch46_cell56:spec_region:right_third-->0.336 → 0.049<!--/n-->, and time
+    near the target goes <!--n:appo_3333:c3_ch46_cell56:spec_near-->0.068 → 0.000 (-99%)<!--/n-->. In agent 2222 it
+    vacates the <!--n:appo_2222:c3_ch3_cell00:spec_vacated-->top-right<!--/n-->
+    (<!--n:appo_2222:c3_ch3_cell00:spec_region:top-right-->0.231 → 0.168<!--/n-->) as much as the steered
+    <!--n:appo_2222:c3_ch3_cell00:spec_quad-->top-left<!--/n-->
+    (<!--n:appo_2222:c3_ch3_cell00:spec_region:top-left-->0.229 → 0.176<!--/n-->). In agent 1111 it vacates the
+    bottom-left, not the steered bottom-right ([04_steering.md](04_steering.md)).
+- **How general.** The frozen rule found, in all three independently trained agents, a single conv3 unit whose p99
+  patch reliably disrupts navigation on held-out games. This suggests a regular product of this training recipe
+  rather than an accident of one network. A spatially local "no-go zone" at the steered location is seen clearly
+  in one of the three agents (3333) and partly in a second (2222, the whole top half). Three agents from one recipe
   cannot establish more.
 - **What it does not tell us.** *Which* channel and cell does this differs between networks; no unit
   correspondence is implied.
+
+![agent 2222: post-hoc specificity map](../figures/specificity_appo_2222_c3_ch3_cell00.png)
+![agent 3333: post-hoc specificity map](../figures/specificity_appo_3333_c3_ch46_cell56.png)
+
+Post-hoc specificity checks, agent 2222:
+
+<!-- BEGIN:specificity_appo_2222 -->
+| conv3 candidate (post hoc) | Δ approach, steered cell (rank of 49, 1 = largest drop) | median Δ over all 49 cells | time within 3 steps of target (rank of 49) | occupancy of the steered cell's quadrant | most vacated quadrant |
+|---|---|---|---|---|---|
+| conv3 channel 3 set to its p99 at cell (0, 0) | -0.034 (28) | -0.036 | 0.062 → 0.043, -31% (14) | top-left: 0.229 → 0.176 (Δ -0.052 [-0.069, -0.037]) | top-right: 0.231 → 0.168 (Δ -0.062 [-0.084, -0.043]) |
+
+| conv3 candidate (post hoc) | open-loop KL at its cell: rank of 64 (× median of the other 63) | nulls with a larger return loss (seeds 10000–10019) | action-change rate | 8-step net displacement (lattice steps) | Δ approach without life-loss windows |
+|---|---|---|---|---|---|
+| conv3 channel 3 set to its p99 at cell (0, 0) | 1 (33×) | 0.0% of 63 | 0.432 → 0.399 (Δ -0.033 [-0.052, -0.013]) | 2.26 → 2.24 (Δ -0.03 [-0.05, -0.00]) | -0.036 |
+
+| fc candidate (post hoc) | P(voted direction) when the nearest edible ghost is in that direction | frightened, edible ghost elsewhere, direction open | normal mode, direction open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
+|---|---|---|---|---|
+| fc neuron 379 zero-ablated (up) | 0.549 → 0.526 (Δ -0.023 [-0.045, 0.001]) | 0.411 → 0.418 (Δ 0.008 [-0.003, 0.019]) | 0.342 → 0.354 (Δ 0.012 [-0.001, 0.025]) | Δ -0.029: 0 of 99 / 0.011 |
+
+Between-game dependence: the held-out games fall into 4 start-state clusters (sizes 24, 24, 25, 27).
+
+| candidate | ICC of paired Δ within clusters | design effect | z | cluster-adjusted z | cluster-adjusted Holm p |
+|---|---|---|---|---|---|
+| fc neuron 379 zero-ablated | 0.062 | 1.71 | -2.99 | -2.28 | 0.0112 |
+| conv3 channel 3 set to its p99 at cell (0, 0) | 0.000 | 1.00 | -7.78 | -7.78 | < 0.0001 |
+<!-- END:specificity_appo_2222 -->
+
+Post-hoc specificity checks, agent 3333:
+
+<!-- BEGIN:specificity_appo_3333 -->
+| conv3 candidate (post hoc) | Δ approach, steered cell (rank of 49, 1 = largest drop) | median Δ over all 49 cells | time within 3 steps of target (rank of 49) | occupancy of the steered cell's quadrant | most vacated quadrant |
+|---|---|---|---|---|---|
+| conv3 channel 46 set to its p99 at cell (5, 6) | -0.216 (21) | -0.178 | 0.068 → 0.000, -99% (2) | bottom-right: 0.264 → 0.034 (Δ -0.230 [-0.254, -0.206]) | bottom-right: 0.264 → 0.034 (Δ -0.230 [-0.254, -0.206]) |
+
+| conv3 candidate (post hoc) | open-loop KL at its cell: rank of 64 (× median of the other 63) | nulls with a larger return loss (seeds 10000–10019) | action-change rate | 8-step net displacement (lattice steps) | Δ approach without life-loss windows |
+|---|---|---|---|---|---|
+| conv3 channel 46 set to its p99 at cell (5, 6) | 1 (34×) | 1.6% of 63 | 0.454 → 0.515 (Δ 0.060 [0.043, 0.078]) | 2.27 → 2.03 (Δ -0.24 [-0.29, -0.20]) | -0.225 |
+
+| fc candidate (post hoc) | P(voted direction) when the nearest edible ghost is in that direction | frightened, edible ghost elsewhere, direction open | normal mode, direction open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
+|---|---|---|---|---|
+| fc neuron 351 zero-ablated (down) | 0.476 → 0.307 (Δ -0.169 [-0.188, -0.149]) | 0.247 → 0.225 (Δ -0.022 [-0.045, -0.000]) | 0.428 → 0.401 (Δ -0.027 [-0.046, -0.008]) | Δ -0.143: 0 of 99 / 0.006 |
+
+Between-game dependence: the held-out games fall into 4 start-state clusters (sizes 24, 24, 25, 27).
+
+| candidate | ICC of paired Δ within clusters | design effect | z | cluster-adjusted z | cluster-adjusted Holm p |
+|---|---|---|---|---|---|
+| fc neuron 351 zero-ablated | 0.000 | 1.00 | 3.20 | 3.20 | 0.9993 |
+| conv3 channel 46 set to its p99 at cell (5, 6) | 0.000 | 1.00 | -25.24 | -25.24 | < 0.0001 |
+<!-- END:specificity_appo_3333 -->
 
 ### Ghost-hunting ablation rule: does not replicate
 - **Agent 2222.** The rule-selected fc unit (379) passes: ablating it lowers ghosts eaten per power pill, beyond
@@ -233,7 +307,14 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
   primary outcome.
 - **Conclusion.**
   - In two of the three agents, ablating the selected fc unit strongly reduces moves in its voted direction toward
-    edible ghosts. This is a secondary metric with no null comparison, so its specificity is untested.
+    edible ghosts. Confirm had no null for this secondary metric. A post-hoc null from the 99 null ablations
+    (seeds 10000–10019) finds <!--n:appo_1111:fc453_ablate:spec_sec_null-->0 of 99<!--/n--> (1111),
+    <!--n:appo_2222:fc379_ablate:spec_sec_null-->0 of 99<!--/n--> (2222) and
+    <!--n:appo_3333:fc351_ablate:spec_sec_null-->0 of 99<!--/n--> (3333) null units at least as strong. The drop is
+    concentrated where the edible ghost lies in the voted direction: in agent 3333,
+    <!--n:appo_3333:fc351_ablate:spec_ctx:trigger-->Δ -0.169 [-0.188, -0.149]<!--/n--> there vs
+    <!--n:appo_3333:fc351_ablate:spec_ctx:frightened_elsewhere_open-->Δ -0.022 [-0.045, -0.000]<!--/n--> in other frightened states with
+    the direction open (tables above).
   - The units' "edible ghost is in direction d" labels do not survive confound control (see the attribution
     tables).
   - Their effect on the *outcome* (ghosts eaten) is not consistent. Removing one direction's vote appears to change

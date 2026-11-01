@@ -95,19 +95,44 @@ Videos (left: unsteered, right: steered, same game seed and sticky-action RNG):
 
 ## Interpretation (agent 1111)
 
-### conv3 channel 18 at cell (5,6): a single unit that creates a "no-go zone" (H2 passes)
+### conv3 channel 18 at cell (5,6): passes H2, but the effect is broad disruption, not a local "no-go zone"
 - **The intervention.** Writing the unit's own 99th-percentile activation into one position of one conv3 channel.
   The unit's 36×36-pixel receptive field (of the 84×84 input) covers the lower right of the maze. The video and the
   occupancy figure outline its central 16×16-pixel core.
-- **The effect.** The agent moves toward that location less often:
+- **The preregistered effect.** The agent moves toward that cell's target node less often:
   - approach rate <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> →
     <!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->, Δ <!--n:appo_1111:c3_ch18_cell56:delta-->-0.063 [-0.077, -0.050]<!--/n-->;
   - Holm p <!--n:appo_1111:c3_ch18_cell56:p-->0.0002<!--/n-->.
-- **Specificity.** The other <!--n:appo_1111:c3_ch18_cell56:null_n-->63<!--/n--> channels, set to *their*
+- **The preregistered null.** The other <!--n:appo_1111:c3_ch18_cell56:null_n-->63<!--/n--> channels, set to *their*
   99th percentile at the same position, barely change approach (mean Δ
-  <!--n:appo_1111:c3_ch18_cell56:null_mean-->-0.004<!--/n-->).
-  <!--n:appo_1111:c3_ch18_cell56:null_ge-->0<!--/n--> of them reach channel 18's effect. The repulsion is a
-  property of this channel at this place, not of perturbing conv3 there.
+  <!--n:appo_1111:c3_ch18_cell56:null_mean-->-0.004<!--/n-->), and
+  <!--n:appo_1111:c3_ch18_cell56:null_ge-->0<!--/n--> of them reach channel 18's effect. H2 therefore passes as
+  preregistered.
+- **Post-hoc specificity checks (audit of 2026-11-01, same held-out games; table below).** They change how the pass
+  should be read:
+  - *The drop is not local.* Computed for the target node of every one of the 49 conv3 cells, the steered cell's
+    drop ranks <!--n:appo_1111:c3_ch18_cell56:spec_rank-->28 of 49<!--/n--> (1 = largest drop). The median cell drops
+    by <!--n:appo_1111:c3_ch18_cell56:spec_median-->-0.068<!--/n-->: the agent approaches almost every part of the maze
+    less often.
+  - *The agent does not leave the steered region.* Its share of time in the steered cell's
+    <!--n:appo_1111:c3_ch18_cell56:spec_quad-->bottom-right<!--/n--> quadrant goes
+    <!--n:appo_1111:c3_ch18_cell56:spec_region:bottom-right-->0.268 → 0.254<!--/n-->. The most vacated quadrant is the
+    <!--n:appo_1111:c3_ch18_cell56:spec_vacated-->bottom-left<!--/n-->
+    (<!--n:appo_1111:c3_ch18_cell56:spec_region:bottom-left-->0.264 → 0.182<!--/n-->). Time within 3 steps of the
+    target node changes <!--n:appo_1111:c3_ch18_cell56:spec_near-->0.062 → 0.057 (-9%)<!--/n--> (rank
+    <!--n:appo_1111:c3_ch18_cell56:spec_near_rank-->20 of 49<!--/n-->).
+  - *The null is weaker, not just different.* Channel 18 has the largest open-loop KL of the 64 channels at that cell
+    (rank <!--n:appo_1111:c3_ch18_cell56:spec_kl_rank-->1 of 64<!--/n-->,
+    <!--n:appo_1111:c3_ch18_cell56:spec_kl_ratio-->10×<!--/n--> the median of the others). Its return loss exceeds that of
+    <!--n:appo_1111:c3_ch18_cell56:spec_damage-->100.0% of its 63 null units<!--/n--> (seeds 10000–10019). The
+    preregistered null matched the dose *rule*, not the strength of the perturbation.
+  - *Navigation degrades.* The action-change rate goes
+    <!--n:appo_1111:c3_ch18_cell56:spec_change-->0.483 → 0.565<!--/n--> and the 8-step net displacement goes
+    <!--n:appo_1111:c3_ch18_cell56:spec_disp-->2.23 → 1.97<!--/n--> lattice steps. The agent dithers more. Life-loss
+    windows do not explain the drop (Δ without them
+    <!--n:appo_1111:c3_ch18_cell56:spec_excl_loss-->-0.065<!--/n-->).
+  - *Reading.* The result is causal: the strongest single-cell perturbation found by the screen reliably changes
+    behaviour on held-out games. It is not evidence that the unit encodes, or creates, a no-go zone at its own location.
 - **Consequences.** Overall play gets worse. We did not measure pellets per maze region, only per game:
   - deaths per 1k in-control steps Δ <!--n:appo_1111:c3_ch18_cell56:deaths_per_1k-->4.2 [3.3, 5.1]<!--/n-->;
   - pellets per 1k in-control steps Δ <!--n:appo_1111:c3_ch18_cell56:pellets_per_1k-->-12.2 [-20.8, -3.8]<!--/n-->;
@@ -115,11 +140,36 @@ Videos (left: unsteered, right: steered, same game seed and sticky-action RNG):
 - **What it does not show.** That channel 18 "means" danger. Its location-controlled object AUROCs are near chance
   (see the audit). Its strongest activations do coincide with Ms. Pac-Man being in its receptive field: she is within
   12 px of its occlusion peak in <!--n:appo_1111:c3_ch18_cell56:near_peak-->98.0% of its 50 top states<!--/n-->
-  (exploratory). The result is causal and behavioural ("activity here repels the agent from here"). The semantic
-  label remains open.
-- **Prior work.** This parallels the "cheese channel" retargeting of a Procgen maze agent
-  ([Mini et al. 2023](https://arxiv.org/abs/2310.08043)), here with a repelling sign and in an Atari agent trained by
-  APPO.
+  (exploratory). The result is causal and behavioural, but not local (post-hoc checks above). The semantic label
+  remains open.
+- **Prior work.** In a Procgen maze agent, modifying channels that encode the goal's position could "partially
+  control the policy" toward a chosen goal location ([Mini et al. 2023](https://arxiv.org/abs/2310.08043)). Our
+  conv3 patch was selected to repel from a location, but post hoc it shows no comparably targeted effect in agent 1111.
+
+Post-hoc specificity checks, agent 1111 (exploratory, same held-out games):
+
+<!-- BEGIN:specificity_appo_1111 -->
+| conv3 candidate (post hoc) | Δ approach, steered cell (rank of 49, 1 = largest drop) | median Δ over all 49 cells | time within 3 steps of target (rank of 49) | occupancy of the steered cell's quadrant | most vacated quadrant |
+|---|---|---|---|---|---|
+| conv3 channel 18 set to its p99 at cell (5,6) | -0.063 (28) | -0.068 | 0.062 → 0.057, -9% (20) | bottom-right: 0.268 → 0.254 (Δ -0.014 [-0.037, 0.010]) | bottom-left: 0.264 → 0.182 (Δ -0.082 [-0.110, -0.056]) |
+
+| conv3 candidate (post hoc) | open-loop KL at its cell: rank of 64 (× median of the other 63) | nulls with a larger return loss (seeds 10000–10019) | action-change rate | 8-step net displacement (lattice steps) | Δ approach without life-loss windows |
+|---|---|---|---|---|---|
+| conv3 channel 18 set to its p99 at cell (5,6) | 1 (10×) | 0.0% of 63 | 0.483 → 0.565 (Δ 0.082 [0.060, 0.104]) | 2.23 → 1.97 (Δ -0.26 [-0.30, -0.22]) | -0.065 |
+
+| fc candidate (post hoc) | P(voted direction) when the nearest edible ghost is in that direction | frightened, edible ghost elsewhere, direction open | normal mode, direction open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
+|---|---|---|---|---|
+| fc neuron 453 zero-ablated (up) | 0.505 → 0.315 (Δ -0.190 [-0.209, -0.171]) | 0.430 → 0.402 (Δ -0.028 [-0.044, -0.013]) | 0.342 → 0.372 (Δ 0.030 [0.012, 0.049]) | Δ -0.194: 0 of 99 / 0.004 |
+
+Between-game dependence: the held-out games fall into 4 start-state clusters (sizes 24, 24, 25, 27).
+
+| candidate | ICC of paired Δ within clusters | design effect | z | cluster-adjusted z | cluster-adjusted Holm p |
+|---|---|---|---|---|---|
+| fc neuron 453 zero-ablated | 0.072 | 1.83 | -0.88 | -0.65 | 0.2579 |
+| conv3 channel 18 set to its p99 at cell (5,6) | 0.125 | 2.44 | -9.39 | -6.00 | < 0.0001 |
+<!-- END:specificity_appo_1111 -->
+
+![post-hoc specificity: Δ approach toward every conv3 cell's target node](../figures/specificity_appo_1111_c3_ch18_cell56.png)
 
 ### fc neuron 453 ablation: a predicted local effect that does not carry to the preregistered outcome (H2 fails)
 - **The predicted local effect holds.** Ablating fc 453 sharply reduces moving up when the nearest edible ghost
@@ -166,18 +216,27 @@ Videos (left: unsteered, right: steered, same game seed and sticky-action RNG):
 ![occlusion: fc 453](../figures/occlusion_appo_1111_fc453_ablate.png)
 
 What this changes:
-- **conv3 channel 18 at (5,6)** depends on input inside its own receptive field (lower right of the maze). So the
-  no-go zone is spatially local: the unit "reports" something about that part of the screen.
+- **conv3 channel 18 at (5,6).** Its *activation* depends on input inside its own receptive field (lower right of
+  the maze), so the unit "reports" something about that part of the screen. Its *steering effect* is not local:
+  approach falls toward almost every cell, and the agent vacates the bottom-left more than the bottom-right (post-hoc
+  checks above).
 - **fc 453.** Its "nearest edible ghost is up" label does not survive confound control:
   - stratified AUROC <!--n:appo_1111:fc453_ablate:auroc:dir_edible_up-->0.59<!--/n-->;
   - unique R² <!--n:appo_1111:fc453_ablate:uniq:dir_edible_up-->0.003<!--/n-->.
 
-  Its causal effect on "move up when the edible ghost is up" therefore most plausibly comes from its fixed UP vote
-  (direct logit attribution), applied in the states where it fires. Those are mostly frightened-mode states:
+  Mechanically, its causal effect on "move up when the edible ghost is up" goes through its fixed UP vote (direct
+  logit attribution), applied in the states where it fires. Those are mostly frightened-mode states:
   <!--n:appo_1111:fc453_ablate:fright_active-->88.8%<!--/n--> of its active steps, against
   <!--n:appo_1111:fc453_ablate:fright_base-->40.3%<!--/n--> of all in-control steps. Its activation also tracks pellets
-  left (table above). It does not come from a clean "ghost is up" representation. "Chase the edible ghost upward"
-  describes the effect of removing it, not what it encodes.
+  left (table above).
+
+  The ablation's *behavioural* effect is nevertheless context-specific (post hoc, same held-out games). P(UP) changes
+  by <!--n:appo_1111:fc453_ablate:spec_ctx:trigger-->Δ -0.190 [-0.209, -0.171]<!--/n--> when the nearest edible ghost
+  is up, <!--n:appo_1111:fc453_ablate:spec_ctx:frightened_elsewhere_open-->Δ -0.028 [-0.044, -0.013]<!--/n--> in other frightened states
+  with up open, and <!--n:appo_1111:fc453_ablate:spec_ctx:normal_open-->Δ 0.030 [0.012, 0.049]<!--/n--> in normal mode with up
+  open. On seeds 10000–10019, <!--n:appo_1111:fc453_ablate:spec_sec_null-->0 of 99<!--/n--> null ablations reduce this
+  secondary metric as much. So the unit fires mainly where chasing an edible ghost upward is at stake. A single
+  "ghost is up" variable does not capture that well (stratified AUROC above).
 - **fc 453's occlusion map** peaks where Ms. Pac-Man is: she is within 12 px of the peak in
   <!--n:appo_1111:fc453_ablate:near_peak-->80.0% of its 50 top states<!--/n-->. Those states largely repeat one
   early-game moment (<!--n:appo_1111:fc453_ablate:top_repeat-->86.0% of them within 10 steps of step 379, from 46 games<!--/n-->),

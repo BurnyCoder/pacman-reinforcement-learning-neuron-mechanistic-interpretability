@@ -33,26 +33,41 @@ questions. Which exact game fact does it track? What happens when we steer it du
 
 **Highlights**
 
-**Steering: one neuron creates a "no-go zone"** (agent 1111, confirmatory, held-out games).
+**Steering: one conv3 unit passes the preregistered test, but it disrupts navigation broadly; it does not create a
+local "no-go zone"** (agent 1111, confirmatory, held-out games).
 - **Intervention.** Setting a *single* conv3 unit (channel 18 at one 7×7 position) to its 99th-percentile
   activation.
-- **Effect.** The agent moves toward that part of the maze less often. Approach rate
+- **Preregistered effect.** The agent moves toward that cell's target node less often. Approach rate
   <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> → <!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->,
-  Holm p <!--n:appo_1111:c3_ch18_cell56:p-->0.0002<!--/n--> (the smallest value the permutation test can give).
-- **Specific.** It is stronger than every one of the
-  <!--n:appo_1111:c3_ch18_cell56:null_n-->63<!--/n--> other channels set at the same position, each to its own
-  99th percentile. The preregistered steering hypothesis (H2) is therefore **supported**.
+  Holm p <!--n:appo_1111:c3_ch18_cell56:p-->0.0002<!--/n--> (the smallest value the permutation test can give). The
+  effect is larger than that of every one of the <!--n:appo_1111:c3_ch18_cell56:null_n-->63<!--/n--> other channels
+  set at the same position, each to its own 99th percentile. The preregistered steering hypothesis (H2) is therefore
+  **supported**.
+- **But the effect is not local** (post-hoc checks on the same games, [reports/04_steering.md](reports/04_steering.md)):
+  - approach falls toward almost every part of the maze: the steered cell's drop ranks
+    <!--n:appo_1111:c3_ch18_cell56:spec_rank-->28 of 49<!--/n--> among all 49 cell targets;
+  - the agent leaves the <!--n:appo_1111:c3_ch18_cell56:spec_vacated-->bottom-left<!--/n-->
+    (<!--n:appo_1111:c3_ch18_cell56:spec_region:bottom-left-->0.264 → 0.182<!--/n--> of its time), not the steered
+    bottom-right (<!--n:appo_1111:c3_ch18_cell56:spec_region:bottom-right-->0.268 → 0.254<!--/n-->);
+  - it is the strongest perturbation at that cell (open-loop KL rank
+    <!--n:appo_1111:c3_ch18_cell56:spec_kl_rank-->1 of 64<!--/n-->), so the 63 null channels are weaker perturbations,
+    not a strength-matched control.
 - **Side effects.** Overall play gets worse: deaths per 1,000 steps Δ
   <!--n:appo_1111:c3_ch18_cell56:deaths_per_1k-->4.2 [3.3, 5.1]<!--/n-->, pellets per 1,000 steps Δ
-  <!--n:appo_1111:c3_ch18_cell56:pellets_per_1k-->-12.2 [-20.8, -3.8]<!--/n-->.
+  <!--n:appo_1111:c3_ch18_cell56:pellets_per_1k-->-12.2 [-20.8, -3.8]<!--/n-->. The agent dithers: action-change rate
+  <!--n:appo_1111:c3_ch18_cell56:spec_change-->0.483 → 0.565<!--/n-->.
 
-![no-go zone: baseline (left) vs conv3 channel 18 patched at the outlined cell (right)](figures/video_appo_1111_c3_ch18_cell56.gif)
+![baseline (left) vs conv3 channel 18 patched at the outlined cell (right)](figures/video_appo_1111_c3_ch18_cell56.gif)
+
+![post-hoc specificity: Δ approach toward every conv3 cell's target node](figures/specificity_appo_1111_c3_ch18_cell56.png)
 
 **Removing one fc neuron reduces a specific ghost-chasing move** (agent 1111).
 - **Effect.** Zero-ablating fc neuron 453, which votes for UP, reduces "move up when the nearest edible ghost is
   up" from
-  <!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n--> (secondary metric, no null
-  comparison).
+  <!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n--> (secondary metric).
+  Post hoc, the drop is specific to that context: <!--n:appo_1111:fc453_ablate:spec_ctx:frightened_elsewhere_open-->Δ -0.028 [-0.044, -0.013]<!--/n-->
+  in other frightened states with up open, <!--n:appo_1111:fc453_ablate:spec_ctx:normal_open-->Δ 0.030 [0.012, 0.049]<!--/n--> in
+  normal mode. <!--n:appo_1111:fc453_ablate:spec_sec_null-->0 of 99<!--/n--> random fc ablations reduce it as much.
 - **Preregistered outcome.** Ghosts eaten per power pill drops only
   <!--n:appo_1111:fc453_ablate:base-->0.294<!--/n--> → <!--n:appo_1111:fc453_ablate:arm-->0.228<!--/n-->. That is
   not significant, so this candidate **fails** H2. Its effect (Δ
@@ -65,8 +80,9 @@ questions. Which exact game fact does it track? What happens when we steer it du
   (<!--n:appo_1111:fc453_ablate:fright_active-->88.8%<!--/n--> of its active steps vs
   <!--n:appo_1111:fc453_ablate:fright_base-->40.3%<!--/n--> of all steps). Its occlusion map peaks where Ms. Pac-Man
   is: she is within 12 px of the peak in
-  <!--n:appo_1111:fc453_ablate:near_peak-->80.0% of its 50 top states<!--/n-->. So the effect most plausibly comes
-  from its UP vote, not from a clean ghost-direction representation.
+  <!--n:appo_1111:fc453_ablate:near_peak-->80.0% of its 50 top states<!--/n-->. The effect goes through its UP vote,
+  applied where the unit fires. It fires mainly where chasing an edible ghost upward is at stake, but no single
+  "ghost is up" variable captures that cleanly.
 
 **"Already clean"? Not for this agent** (negative result).
 - Fraction of alive fc neurons with one main job on held-out games, agent 1111:
@@ -76,6 +92,14 @@ questions. Which exact game fact does it track? What happens when we steer it du
 - The preregistered difference test is technically <!--n:appo_1111:h1_verdict-->supported<!--/n--> for agent
   1111 but trivially small, and it reverses at a looser threshold. For agents 2222 and 3333 it is
   <!--n:appo_2222:h1_verdict-->not supported<!--/n--> and <!--n:appo_3333:h1_verdict-->not supported<!--/n-->.
+  The 1111 pass rests on <!--n:appo_1111:h1_n_clean:agent-->3 of 367<!--/n--> neurons vs
+  <!--n:appo_1111:h1_n_clean:random_dirs-->1 of 512<!--/n--> random directions. Against the secondary controls the
+  agent is *less* clean: agent minus non-negative unit mixtures
+  <!--n:appo_1111:h1_diff_nonneg_mix-->-0.5% [-0.9%, -0.4%]<!--/n-->, agent minus untrained network
+  <!--n:appo_1111:h1_diff_untrained-->-8.6% [-10.8%, -4.4%]<!--/n-->. Every "one-job" unit follows one slow global
+  variable (discovery split-half): untrained network <!--n:appo_1111:clean_feat:untrained-->maze for 53 of 53<!--/n-->,
+  agent <!--n:appo_1111:clean_feat:agent-->n_pellets for 3 of 3<!--/n-->. So "one job" against this dictionary is a
+  weak proxy for meaningful selectivity.
 - Exploratory (discovery split-half, out-of-sample): a lookup table over Ms. Pac-Man's lattice node × heading (up to
   1,008 bins) gives a median R² of <!--n:appo_1111:place_heading_median-->0.20<!--/n--> per neuron. The best of the
   40 single features (≤ 20 bins each) gives <!--n:appo_1111:median_best_disc-->0.03<!--/n-->. Position, a joint
@@ -84,13 +108,16 @@ questions. Which exact game fact does it track? What happens when we steer it du
   one variable.
 
 **Replication (H3).** Frozen selection rules were applied to independently trained agents 2222 and 3333:
-- no-go-zone rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n-->;
+- most-repelling-patch rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n--> as preregistered. Post hoc, the rule
+  always picks the strongest patch at its cell. The agent clearly leaves the steered region only in agent 3333
+  (right third of the maze <!--n:appo_3333:c3_ch46_cell56:spec_region:right_third-->0.336 → 0.049<!--/n-->). Agent
+  2222 leaves the whole top half, which contains its steered cell;
 - ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n--> (exploratory: fc 453 already
   failed H2, and the preregistration defines H3 only for candidates that pass).
 
 See [reports/05_replication.md](reports/05_replication.md).
 
-![agent 3333: no-go zone from conv3 channel 46](figures/video_appo_3333_c3_ch46_cell56.gif)
+![agent 3333: conv3 channel 46 patched at the outlined cell; here the agent does avoid that region](figures/video_appo_3333_c3_ch46_cell56.gif)
 
 **Interactive microscope.** Every alive fc neuron with its frames, label and action votes:
 https://burnycoder.github.io/pacman-reinforcement-learning-neuron-mechanistic-interpretability/
@@ -123,7 +150,7 @@ https://burnycoder.github.io/pacman-reinforcement-learning-neuron-mechanistic-in
 | non-negative unit mixtures (control b) | 512 | 1.4% [1.2%, 1.8%] | 0.720 | 0.053 |
 | untrained network (control c) | 499 | 9.4% [5.2%, 11.6%] | 0.537 | 0.096 |
 
-H1 test (agent minus random directions): 0.6% [0.2%, 0.6%]; H1 supported.
+H1 test (agent minus random directions): 0.6% [0.2%, 0.6%]; H1 supported. One-job units: agent 3 of 367, random directions 1 of 512. Secondary controls (not part of the verdict): agent minus non-negative mixtures -0.5% [-0.9%, -0.4%]; agent minus untrained network -8.6% [-10.8%, -4.4%].
 <!-- END:h1_appo_1111 -->
 
 ![one-job fraction](figures/clean_fraction_appo_1111.png)
@@ -158,12 +185,40 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
 
 ![fc453 vs null](figures/steer_appo_1111_fc453_ablate.png)
 
+Post-hoc specificity checks (exploratory, added by an independent audit; same held-out games):
+<!-- BEGIN:specificity_appo_1111 -->
+| conv3 candidate (post hoc) | Δ approach, steered cell (rank of 49, 1 = largest drop) | median Δ over all 49 cells | time within 3 steps of target (rank of 49) | occupancy of the steered cell's quadrant | most vacated quadrant |
+|---|---|---|---|---|---|
+| conv3 channel 18 set to its p99 at cell (5,6) | -0.063 (28) | -0.068 | 0.062 → 0.057, -9% (20) | bottom-right: 0.268 → 0.254 (Δ -0.014 [-0.037, 0.010]) | bottom-left: 0.264 → 0.182 (Δ -0.082 [-0.110, -0.056]) |
+
+| conv3 candidate (post hoc) | open-loop KL at its cell: rank of 64 (× median of the other 63) | nulls with a larger return loss (seeds 10000–10019) | action-change rate | 8-step net displacement (lattice steps) | Δ approach without life-loss windows |
+|---|---|---|---|---|---|
+| conv3 channel 18 set to its p99 at cell (5,6) | 1 (10×) | 0.0% of 63 | 0.483 → 0.565 (Δ 0.082 [0.060, 0.104]) | 2.23 → 1.97 (Δ -0.26 [-0.30, -0.22]) | -0.065 |
+
+| fc candidate (post hoc) | P(voted direction) when the nearest edible ghost is in that direction | frightened, edible ghost elsewhere, direction open | normal mode, direction open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
+|---|---|---|---|---|
+| fc neuron 453 zero-ablated (up) | 0.505 → 0.315 (Δ -0.190 [-0.209, -0.171]) | 0.430 → 0.402 (Δ -0.028 [-0.044, -0.013]) | 0.342 → 0.372 (Δ 0.030 [0.012, 0.049]) | Δ -0.194: 0 of 99 / 0.004 |
+
+Between-game dependence: the held-out games fall into 4 start-state clusters (sizes 24, 24, 25, 27).
+
+| candidate | ICC of paired Δ within clusters | design effect | z | cluster-adjusted z | cluster-adjusted Holm p |
+|---|---|---|---|---|---|
+| fc neuron 453 zero-ablated | 0.072 | 1.83 | -0.88 | -0.65 | 0.2579 |
+| conv3 channel 18 set to its p99 at cell (5,6) | 0.125 | 2.44 | -9.39 | -6.00 | < 0.0001 |
+<!-- END:specificity_appo_1111 -->
+
 **In plain language.**
 - **Labels.** Single game facts are not how this agent's neurons are organised. Many neurons are better described
   as "Ms. Pac-Man is around here, heading this way" than as "a ghost is near" (an exploratory, post-hoc finding).
-  Random directions in the same layer are about equally (un)clean.
-- **Steering.** The causal tests show which single units still matter for one behaviour, and the null units show
-  how much damage a random unit of the same layer would cause.
+  Random directions in the same layer are about equally (un)clean, and an untrained network scores *higher*, because
+  its units follow the maze colour.
+- **Steering, where it worked.** Patching one conv3 unit changed behaviour more than any of 63 other channels at the
+  same spot. Removing fc 453 cut "go up toward an edible ghost" in exactly that situation, more than any of 99 random
+  removals.
+- **Steering, where it is weaker than it first looked.** The conv3 patch is also the strongest jolt at that spot.
+  It makes the agent head toward almost *every* part of the maze less often, rather than avoid the patched spot.
+- **Steering, where it failed.** No intervention improved play. Every candidate raised deaths. fc 453 did not
+  reduce ghosts eaten per power pill significantly.
 - More: [summary of all experiments](reports/00_summary.md), with a glossary and a layman explanation.
 
 ## Method

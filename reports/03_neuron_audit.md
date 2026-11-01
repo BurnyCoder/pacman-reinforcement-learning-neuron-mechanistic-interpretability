@@ -52,7 +52,7 @@
 | non-negative unit mixtures (control b) | 512 | 1.4% [1.2%, 1.8%] | 0.720 | 0.053 |
 | untrained network (control c) | 499 | 9.4% [5.2%, 11.6%] | 0.537 | 0.096 |
 
-H1 test (agent minus random directions): 0.6% [0.2%, 0.6%]; H1 supported.
+H1 test (agent minus random directions): 0.6% [0.2%, 0.6%]; H1 supported. One-job units: agent 3 of 367, random directions 1 of 512. Secondary controls (not part of the verdict): agent minus non-negative mixtures -0.5% [-0.9%, -0.4%]; agent minus untrained network -8.6% [-10.8%, -4.4%].
 <!-- END:h1_appo_1111 -->
 
 Robustness (preregistered: start-state-cluster bootstrap; threshold sensitivity). The tiny H1 advantage is **not
@@ -127,6 +127,21 @@ This analysis was not preregistered and is evidence for a hypothesis to test, no
   random directions but only <!--n:appo_1111:best_feat_pellets:agent-->155 of 367<!--/n--> neurons (discovery
   split-half, `results/claim_checks_appo_1111.json`). Dense mixtures pick up this slow global variable, which is why
   random directions have a higher best single-feature R².
+- The preregistered pass for agent 1111 rests on <!--n:appo_1111:h1_n_clean:agent-->3 of 367<!--/n--> neurons vs
+  <!--n:appo_1111:h1_n_clean:random_dirs-->1 of 512<!--/n--> random directions. Against the secondary controls the
+  agent is significantly *less* clean (added by the 2026-11-01 audit):
+  - agent minus non-negative mixtures: <!--n:appo_1111:h1_diff_nonneg_mix-->-0.5% [-0.9%, -0.4%]<!--/n-->;
+  - agent minus untrained network: <!--n:appo_1111:h1_diff_untrained-->-8.6% [-10.8%, -4.4%]<!--/n-->.
+- Every "one-job" unit, in every set, follows one slow global variable (discovery split-half,
+  `results/claim_checks_appo_1111.json`):
+  - agent: <!--n:appo_1111:clean_feat:agent-->n_pellets for 3 of 3<!--/n-->;
+  - random directions: <!--n:appo_1111:clean_feat:random_dirs-->n_pellets for 3 of 3<!--/n-->;
+  - untrained network: <!--n:appo_1111:clean_feat:untrained-->maze for 53 of 53<!--/n-->.
+
+  Plausibly the untrained units follow the maze id because each maze has its own wall colour, a large change in
+  input pixels (not tested further). So with this dictionary the one-job criterion rewards units that follow pellets left or the maze colour. It is a weak proxy for
+  the semantic "one main job" of Goodfire's free-text labels, and H1's verdict says little about interpretability in
+  either direction.
 - Alive units are sparse: the median one is active on <!--n:appo_1111:median_active-->1.0%<!--/n--> of in-control
   steps.
 - <!--n:appo_1111:dead-->145<!--/n--> of 512 fc units are active on fewer than 0.1% of in-control discovery steps (the
