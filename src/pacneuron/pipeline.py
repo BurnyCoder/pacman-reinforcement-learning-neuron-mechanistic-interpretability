@@ -3,7 +3,8 @@
 Usage: uv run python -m pacneuron.pipeline --phase <name>[,<name>...] [--seed 1111]
 Phases: collect-discovery and collect-heldout (here), plus every function in phases.py with "_" written as "-"
 (stochasticity, ground-truth, audit, conjunctions, conv3-states, screen, dose-screen, pilot, derive-candidates, h1,
-confirm, offtarget, attribution, occupancy, claim-checks, fidelity, maze-frame, videos, report, site, publish-hf);
+confirm, offtarget, attribution, occupancy, specificity, claim-checks, fidelity, maze-frame, videos, report, site,
+publish-hf);
 docs/pipeline.md lists their inputs and outputs. There is no "all" phase: the preregistration requires committing
 the frozen candidates between the discovery and held-out phases.
 Global: each phase reads inputs from DATA_DIR / results and writes small JSON summaries to results/, from which
@@ -42,8 +43,8 @@ def collect(seed: str, split: str) -> None:
     from pacneuron.model import orthogonal_init_like
     from pacneuron.rollout import run_games
     if split == "heldout":
-        from pacneuron.prereg import require_frozen
-        require_frozen()
+        from pacneuron.prereg import require_frozen_for
+        require_frozen_for(MODELS[seed].name)
     seeds = DISCOVERY_SEEDS if split == "discovery" else HELDOUT_SEEDS
     model = _model(seed)
     d = data.split_dir(MODELS[seed].name, split)

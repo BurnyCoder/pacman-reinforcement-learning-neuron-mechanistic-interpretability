@@ -12,8 +12,9 @@
 - Never edit `reports/preregistration.md`, `reports/preregistration_addendum.md` or `results/candidates.json`: they
   are frozen. Corrections go to "Errata and undeclared deviations" in `reports/00_summary.md`.
 - Held-out seeds (10000-10099) may only be read after the preregistration addendum is committed.
-  `pacneuron.prereg.require_frozen` enforces this in `collect-heldout`, `h1`, `confirm` and `aa-control`.
-  `offtarget`, `occupancy` and `videos` read only the arms that `confirm` wrote. The lock checks that the frozen
+  `pacneuron.prereg.require_frozen_for` enforces this in `collect-heldout`, `h1`, `confirm` and `aa-control`; for
+  agents 2222/3333 it also requires their committed `results/candidates_<agent>.json`.
+  `offtarget`, `occupancy`, `specificity` and `videos` read only the arms that `confirm` wrote. The lock checks that the frozen
   files have no uncommitted diff against HEAD. It records SHA-256 hashes of their working-tree bytes, so the hashes
   depend on line endings.
 - RAM uint8 arithmetic underflows: always go through `ram.py` helpers, which cast to int32.

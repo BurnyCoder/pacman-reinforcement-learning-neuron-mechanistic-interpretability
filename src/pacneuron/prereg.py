@@ -34,3 +34,9 @@ def require_frozen(extra: list[str] | None = None) -> dict:
         lock[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
     lock["frozen_commit"] = _git("log", "-1", "--format=%H", "--", *FROZEN, *(extra or [])).stdout.strip()
     return lock
+
+
+def require_frozen_for(model: str) -> dict:
+    """`require_frozen` plus, for a replication agent, its own rule-derived results/candidates_<model>.json, so
+    none of that agent's held-out phases can run before its candidates are committed (agent 1111 has none)."""
+    return require_frozen([] if model == "appo_1111" else [f"results/candidates_{model}.json"])

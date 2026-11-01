@@ -24,6 +24,7 @@ uv run python -m pacneuron.pipeline --phase <phase>[,<phase>...] --seed {1111|22
 | `offtarget` | confirm arms | `results/offtarget_<agent>.json` | §6 criterion 3: two-sided tests + BH |
 | `attribution` | discovery games, candidates | `results/attribution_<agent>.json` | upstream contributions, occlusion, stratified AUROC, unique R² |
 | `occupancy` | confirm arms | `results/occupancy_<agent>.json` | where the agent goes with/without conv3 patches |
+| `specificity` | confirm arms, `DATA_DIR/analysis/screen_<agent>.npz` | `results/specificity_<agent>.json` | post hoc (added by the 2026-11-01 audit): approach toward all 49 cell targets, region occupancy, open-loop KL rank, damage vs nulls and navigation for conv3 candidates; trigger-context rates and a null for the fc secondary metric; start-cluster ICC for every candidate |
 | `aa-control` | frozen files (lock), held-out baseline | `DATA_DIR/steer/<agent>/heldout/aa_noop/*`, `results/aa_control_<agent>.json` | exploratory: unsteered replay of 50 held-out seeds; checks that the seed pairing holds |
 | `claim-checks` | discovery games, audit arrays, attribution | `results/claim_checks_<agent>.json` | exploratory numbers behind prose claims: best-feature counts, candidates' frightened share and occlusion-peak distances, masked `ram[116]` R² |
 | `dose-screen` | discovery games, audit | `results/dose_screen_<agent>.json` | exploratory dose-response of the patch screen |
