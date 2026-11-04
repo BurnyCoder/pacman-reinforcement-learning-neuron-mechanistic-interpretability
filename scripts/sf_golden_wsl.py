@@ -7,7 +7,8 @@ Global: tests/test_fidelity.py checks that our Windows re-implementation (env.py
 these observations bit-exactly and these logits to 1e-5 - the fidelity gate for every later result.
 
 Setup (see scripts/sf_golden_wsl.sh): Python 3.10 venv with sample-factory==2.0.3, gym[atari,accept-rom-license]==0.26.2,
-torch<2 (CPU). The pretrained agents were trained in Oct 2022 with the SF 2.0 pre-release (gym 0.26 era).
+torch<2 (CPU). The pretrained agents were trained in Oct 2022 with the SF 2.0 pre-release (gym 0.26 era), most likely
+through its envpool path (cfg.json: --env_agents=512 --batched_sampling=True); this script covers the gym path only.
 Usage: python scripts/sf_golden_wsl.py <checkpoint.pth> <cfg.json> <out.npz>
 """
 

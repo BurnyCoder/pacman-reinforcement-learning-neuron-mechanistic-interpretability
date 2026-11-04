@@ -1,4 +1,8 @@
-"""Atari Ms. Pac-Man environment exactly as the pretrained Sample Factory agents saw it during training.
+"""Atari Ms. Pac-Man environment exactly as Sample Factory's gym Atari path builds it.
+
+The pretrained agents were most likely trained through Sample Factory's envpool path instead (cfg.json passes
+--env_agents=512 --batched_sampling=True), which uses the same settings but converts frames to grayscale before
+max-pooling and resizing; reports/00_summary.md, erratum 17.
 
 Local: hand-ported wrappers + `make_env()` + a deterministic `replay()`.
 Global: rollout.py runs many of these envs in worker processes; features.py consumes the per-step
@@ -27,7 +31,9 @@ import numpy as np
 
 from pacneuron.config import ENV_ID, STICKY
 
-gym.register_envs(ale_py)  # gymnasium>=1.0 does not auto-register ALE ids (https://ale.farama.org/gymnasium-interface/)
+# gymnasium>=1.0 removed plugin auto-registration: ALE ids exist only after `import ale_py` (above); register_envs is a
+# documented no-op that marks the import as used (https://github.com/Farama-Foundation/Gymnasium/releases/tag/v1.0.0).
+gym.register_envs(ale_py)
 
 
 class NoopResetEnv(gym.Wrapper):
@@ -165,7 +171,7 @@ def _find_wrapper(env: gym.Env, cls: type) -> gym.Wrapper:
 
 
 def make_env(sticky: float = 0.0, render_mode: str | None = None) -> gym.Env:
-    """Build the training-identical env. `sticky` > 0 enables ALE sticky actions (prereg fallback only)."""
+    """Build Sample Factory's gym Atari env. `sticky` > 0 enables ALE sticky actions (prereg fallback only)."""
     env = gym.make(ENV_ID, repeat_action_probability=sticky, render_mode=render_mode)
     env = gym.wrappers.RecordEpisodeStatistics(env)  # innermost, as in SF: records true game score/length
     env = NoopResetEnv(env, noop_max=30)

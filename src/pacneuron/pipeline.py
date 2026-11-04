@@ -3,8 +3,8 @@
 Usage: uv run python -m pacneuron.pipeline --phase <name>[,<name>...] [--seed 1111]
 Phases: collect-discovery and collect-heldout (here), plus every function in phases.py with "_" written as "-"
 (stochasticity, ground-truth, audit, conjunctions, conv3-states, screen, dose-screen, pilot, derive-candidates, h1,
-confirm, offtarget, attribution, occupancy, specificity, claim-checks, fidelity, maze-frame, videos, report, site,
-publish-hf);
+confirm, offtarget, attribution, occupancy, specificity, aa-control, claim-checks, fidelity, maze-frame, videos, report,
+site, publish-hf);
 docs/pipeline.md lists their inputs and outputs. There is no "all" phase: the preregistration requires committing
 the frozen candidates between the discovery and held-out phases.
 Global: each phase reads inputs from DATA_DIR / results and writes small JSON summaries to results/, from which

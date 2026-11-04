@@ -7,7 +7,8 @@ Global: steps within one game are strongly autocorrelated, so every uncertainty 
 References: Holm (1979) step-down FWER control (https://www.jstor.org/stable/4615733); Benjamini & Hochberg (1995)
 FDR (https://doi.org/10.1111/j.2517-6161.1995.tb02031.x); Efron & Tibshirani (1993) percentile bootstrap; resampling
 whole games = cluster bootstrap (Field & Welsh 2007, https://doi.org/10.1111/j.1467-9868.2007.00593.x); sign-flip
-permutation tests for paired designs (Good, "Permutation Tests", 2005).
+permutation tests for paired designs (Good 2005, "Permutation, Parametric, and Bootstrap Tests of Hypotheses", 3rd ed.,
+Springer, https://doi.org/10.1007/b138696).
 """
 
 from __future__ import annotations

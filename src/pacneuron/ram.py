@@ -12,9 +12,9 @@ Sources:
   dots_eaten_count = ram[119].
 - Frightened mode, identified independently here by correlating RAM with blue ghost pixels
   (reports/02_ram_ground_truth.md) and, earlier, documented by taodav/jev_deep_rl (jev_rl/mspacman.py, commit
-  3f69ca3a, 2026-09-20, https://github.com/taodav/jev_deep_rl): ram[1+i] bit 7 = ghost i is edible; ram[116] > 0
-  while any ghost is edible. Only the low six bits of ram[116] are a countdown; its upper bits change when ghosts
-  are eaten (jev_deep_rl; measured in results/ground_truth_*.json). `frightened_timer` keeps the raw byte because
+  3f69ca3a, 2026-09-20, https://github.com/taodav/jev_deep_rl): ram[1+i] bit 7 = ghost i is frightened (edible);
+  only the low six bits of ram[116] are a countdown, and its upper bits change when ghosts are eaten. Our own
+  measurement (results/ground_truth_*.json) adds that ram[116] > 0 while any ghost is edible. `frightened_timer` keeps the raw byte because
   the frozen analyses used it; `frightened_ticks` is the masked countdown.
 """
 
@@ -24,7 +24,8 @@ import numpy as np
 
 # Sprite box sizes from OCAtari (Player/Ghost wh = 9, 10).
 SPRITE_W, SPRITE_H = 9, 10
-# Frightened (edible) ghost colour in the RGB frame (measured; see reports/02_ram_ground_truth.md).
+# Frightened (edible) ghost colour in the RGB frame (measured; see reports/02_ram_ground_truth.md). OCAtari's vision mode
+# uses the same colour for edible ghosts ("eatable": [66, 114, 194] in ocatari/vision/mspacman.py).
 FRIGHTENED_RGB = (66, 114, 194)
 
 

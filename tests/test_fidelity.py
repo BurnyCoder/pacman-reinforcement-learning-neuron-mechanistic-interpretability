@@ -1,7 +1,8 @@
 """Fidelity gate: our Windows env + model must reproduce real Sample Factory exactly.
 
 The fixture tests/fixtures/sf_golden.npz is produced by scripts/sf_golden_wsl.py with sample-factory 2.0.3,
-gym 0.26.2, ale-py 0.8.1 (the training-era stack) from SF's own make_atari_env and create_actor_critic.
+gym 0.26.2, ale-py 0.8.1 (the closest released stack) from SF's own make_atari_env and create_actor_critic. It covers SF's
+gym Atari path; training most likely used SF's envpool path (reports/00_summary.md, erratum 17).
 """
 
 from pathlib import Path

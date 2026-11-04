@@ -11,8 +11,10 @@ DQN architecture (Mnih et al. 2015, https://www.nature.com/articles/nature14236)
 
 Sources (Sample Factory, MIT):
 - conv stack: sample_factory/model/encoder.py, convnet_atari = [[C,32,8,4],[32,64,4,2],[64,64,3,1]],
-  ReLU after every conv, then flatten and `encoder_conv_mlp_layers=[512]` Linear+ReLU.
-- obs normalisation: sample_factory/utils/normalize.py (obs * 1/255) then
+  activation cfg.nonlinearity after every conv, then flatten and `encoder_conv_mlp_layers=[512]` Linear+activation;
+  the activation is ReLU for Atari (sf_examples/atari/atari_params.py nonlinearity="relu"; the run's cfg.json).
+- obs normalisation: sample_factory/utils/normalize.py (obs * 1/obs_scale, obs_scale=255 from atari_params.py and
+  cfg.json) then
   sample_factory/algo/utils/running_mean_std.py: x.sub_(mu).mul_(1/sqrt(var+1e-5)).clamp_(-5, 5),
   with mu/var cast to float32 (`.float()`).
 - heads: critic_linear Linear(512,1); action_parameterization.distribution_linear Linear(512,9);
@@ -121,8 +123,9 @@ def load_sf_checkpoint(path, device: str = "cpu") -> SFActorCritic:
 def orthogonal_init_like(model: SFActorCritic, seed: int) -> SFActorCritic:
     """Untrained control network: same architecture and the *trained* obs normaliser, fresh weights.
 
-    Sample Factory cfg uses policy_initialization=orthogonal with policy_init_gain=1.0 and zero biases
-    (sample_factory/model/model_utils.py / actor_critic.py initialize_weights). Orthogonal init: Saxe et al. 2014,
+    Sample Factory cfg uses policy_initialization=orthogonal with policy_init_gain=1.0 (defaults in
+    sample_factory/cfg/cfg.py, confirmed in the run's cfg.json) and zero biases (sample_factory/model/actor_critic.py
+    `initialize_weights`). Orthogonal init: Saxe et al. 2014,
     https://arxiv.org/abs/1312.6120. The same `seed` is used for every agent, so the three agents' untrained
     controls share weights (only the copied observation normaliser differs).
     """
