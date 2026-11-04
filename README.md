@@ -2,8 +2,8 @@
 
 This repository applies neuron-level mechanistic interpretability, in the style of Goodfire's
 ["Neural Networks Are Already Clean"](https://already-clean.goodfire.com/), to deep RL agents that learned Atari
-**Ms. Pac-Man purely from game reward**: no imitation learning, no human data. For every alive fc neuron it asks two
-questions. Which exact game fact does it track? What happens when we steer it during play?
+**Ms. Pac-Man purely from game reward**: no imitation learning, no human data. It asks two questions. Which exact
+game fact does each alive fc neuron track? And what happens during play when a few selected units are steered?
 
 **How it works**
 - **Models.** Pretrained [Sample Factory](https://github.com/alex-petrenko/sample-factory) APPO agents
@@ -12,10 +12,12 @@ questions. Which exact game fact does it track? What happens when we steer it du
   [2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) and
   [3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333), each trained for 2B emulator frames
   (about 500M agent steps at frameskip 4; `train_for_env_steps` with `summaries_use_frameskip` in their `cfg.json`).
-- **Rebuild.** A plain-PyTorch rebuild of the network and the exact training wrapper chain, checked against a
-  golden trajectory from real Sample Factory 2.0.3: observations are bit-exact, and logits agree to
+- **Rebuild.** A plain-PyTorch rebuild of the network and of Sample Factory's gym Atari wrapper chain, checked
+  against a golden trajectory from real Sample Factory 2.0.3: observations are bit-exact, and logits agree to
   <!--n:fid_logit-->1.1e-05<!--/n--> on CPU. On the GPU used for data collection (cuDNN TF32 convolutions, PyTorch's
-  default) they agree only to <!--n:fid_logit_gpu-->4.5e-02<!--/n-->.
+  default) they agree only to <!--n:fid_logit_gpu-->4.5e-02<!--/n-->. Training itself most likely ran through Sample
+  Factory's envpool path, whose grayscale/max-pool order differs slightly; that input difference was not measured
+  ([erratum 17](reports/00_summary.md#errata-from-the-independent-fact-check-2026-11-04)).
 - **Ground truth.** Decoded from the Atari console RAM:
   - positions, pellets and power pills, using [OCAtari](https://github.com/k4ntz/OC_Atari) and
     [AtariARI](https://github.com/mila-iqia/atari-representation-learning) addresses;
@@ -65,7 +67,7 @@ local "no-go zone"** (agent 1111, confirmatory, held-out games).
 - **Effect.** Zero-ablating fc neuron 453, which votes for UP, reduces "move up when the nearest edible ghost is
   up" from
   <!--n:appo_1111:fc453_ablate:sec-->0.505 → 0.315 (Δ -0.190 [-0.209, -0.171])<!--/n--> (secondary metric).
-  Post hoc, the drop is specific to that context: <!--n:appo_1111:fc453_ablate:spec_ctx:frightened_elsewhere_open-->Δ -0.028 [-0.044, -0.013]<!--/n-->
+  Post hoc, the drop is concentrated in that context: <!--n:appo_1111:fc453_ablate:spec_ctx:frightened_elsewhere_open-->Δ -0.028 [-0.044, -0.013]<!--/n-->
   in other frightened states with up open, <!--n:appo_1111:fc453_ablate:spec_ctx:normal_open-->Δ 0.030 [0.012, 0.049]<!--/n--> in
   normal mode. <!--n:appo_1111:fc453_ablate:spec_sec_null-->0 of 99<!--/n--> random fc ablations reduce it as much.
 - **Preregistered outcome.** Ghosts eaten per power pill drops only
@@ -108,8 +110,8 @@ local "no-go zone"** (agent 1111, confirmatory, held-out games).
   one variable.
 
 **Replication (H3).** Frozen selection rules were applied to independently trained agents 2222 and 3333:
-- most-repelling-patch rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n--> as preregistered. Post hoc, the rule
-  always picks the strongest patch at its cell. The agent clearly leaves the steered region only in agent 3333
+- most-repelling-patch rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n--> as preregistered. Post hoc, in all three
+  agents the rule picked the strongest patch at its cell. The agent clearly leaves the steered region only in agent 3333
   (right third of the maze <!--n:appo_3333:c3_ch46_cell56:spec_region:right_third-->0.336 → 0.049<!--/n-->). Agent
   2222 leaves the whole top half, which contains its steered cell;
 - ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n--> (exploratory: fc 453 already
@@ -134,11 +136,11 @@ https://burnycoder.github.io/pacman-reinforcement-learning-neuron-mechanistic-in
 
 ### Models
 <!-- BEGIN:models -->
-| agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (no sticky) |
+| agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (episodes and settings not stated) |
 |---|---|---|---|---|---|---|---|
-| [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with MsPacmanNoFrameskip-v4 | 100 | 4082 ± 2032 | 6288 ± 1955 |
-| [appo_2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with MsPacmanNoFrameskip-v4 | 100 | 5161 ± 2056 | 9056 ± 2544 |
-| [appo_3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with MsPacmanNoFrameskip-v4 | 100 | 5056 ± 2358 | 6808 ± 1183 |
+| [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of Ms. Pac-Man play, most likely via envpool MsPacman-v5 (erratum 17) | 100 | 4082 ± 2032 | 6288 ± 1955 |
+| [appo_2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of Ms. Pac-Man play, most likely via envpool MsPacman-v5 (erratum 17) | 100 | 5161 ± 2056 | 9056 ± 2544 |
+| [appo_3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of Ms. Pac-Man play, most likely via envpool MsPacman-v5 (erratum 17) | 100 | 5056 ± 2358 | 6808 ± 1183 |
 <!-- END:models -->
 
 ### Is each neuron "one job"? (H1; held-out games; method vs controls)
@@ -195,7 +197,7 @@ Post-hoc specificity checks (exploratory, added by an independent audit; same he
 |---|---|---|---|---|---|
 | conv3 channel 18 set to its p99 at cell (5,6) | 1 (10×) | 0.0% of 63 | 0.483 → 0.565 (Δ 0.082 [0.060, 0.104]) | 2.23 → 1.97 (Δ -0.26 [-0.30, -0.22]) | -0.065 |
 
-| fc candidate (post hoc) | P(voted direction) when the nearest edible ghost is in that direction | frightened, edible ghost elsewhere, direction open | normal mode, direction open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
+| fc candidate (post hoc; d = secondary-metric direction) | P(move in d) when the nearest edible ghost is in d | frightened, edible ghost elsewhere, d open | normal mode, d open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
 |---|---|---|---|---|
 | fc neuron 453 zero-ablated (up) | 0.505 → 0.315 (Δ -0.190 [-0.209, -0.171]) | 0.430 → 0.402 (Δ -0.028 [-0.044, -0.013]) | 0.342 → 0.372 (Δ 0.030 [0.012, 0.049]) | Δ -0.194: 0 of 99 / 0.004 |
 
@@ -211,10 +213,10 @@ Between-game dependence: the held-out games fall into 4 start-state clusters (si
 - **Labels.** Single game facts are not how this agent's neurons are organised. Many neurons are better described
   as "Ms. Pac-Man is around here, heading this way" than as "a ghost is near" (an exploratory, post-hoc finding).
   Random directions in the same layer are about equally (un)clean, and an untrained network scores *higher*, because
-  its units follow the maze colour.
+  its one-job units all follow the maze id (plausibly through the wall colour, which differs between mazes).
 - **Steering, where it worked.** Patching one conv3 unit changed behaviour more than any of 63 other channels at the
-  same spot. Removing fc 453 cut "go up toward an edible ghost" in exactly that situation, more than any of 99 random
-  removals.
+  same spot. Removing fc 453 cut "go up toward an edible ghost", mostly in that situation and more than any of 99
+  random removals.
 - **Steering, where it is weaker than it first looked.** The conv3 patch is also the strongest jolt at that spot.
   It makes the agent head toward almost *every* part of the maze less often, rather than avoid the patched spot.
 - **Steering, where it failed.** No intervention improved play. Every candidate raised deaths. fc 453 did not
@@ -237,9 +239,10 @@ flowchart LR
   K --> L[Closed-loop play, paired seeds,<br/>matched null units]
 ```
 
-1. **Fidelity** ([report](reports/01_fidelity.md)). The training-era stack (sample-factory 2.0.3, gym 0.26.2,
-   ale-py 0.8.1) runs in WSL and produces a golden trajectory. Our Windows environment reproduces its observations
-   bit-exactly and our model its logits to 1.1e-5 on CPU (GPU/TF32 differences are reported separately).
+1. **Fidelity** ([report](reports/01_fidelity.md)). The closest released stack (sample-factory 2.0.3, gym 0.26.2,
+   ale-py 0.8.1) runs Sample Factory's gym Atari path in WSL and produces a golden trajectory. Our Windows environment
+   reproduces its observations bit-exactly and our model its logits to 1.1e-5 on CPU (GPU/TF32 differences are
+   reported separately). Training most likely used the envpool path instead (see above).
 2. **Ground truth** ([report](reports/02_ram_ground_truth.md)). RAM decoding is validated against pixels; 40
    features in 5 families.
 3. **Data.** 100 discovery and 100 held-out full games per agent. Actions are sampled from the policy with a
@@ -305,7 +308,7 @@ uv run python -m pacneuron.pipeline --phase collect-heldout,h1,confirm,videos,re
 
 ## Features
 - Re-implementation of Sample Factory's Atari agent with no Sample Factory dependency on Windows. Observations
-  are bit-exact; logits agree to 1.1e-5 on CPU.
+  are bit-exact against Sample Factory's gym Atari path; logits agree to 1.1e-5 on CPU.
 - RAM ground truth for Ms. Pac-Man, including the frightened-mode addresses (pixel-validated), a maze lattice
   graph with BFS distances, and conv3-cell object maps.
 - Goodfire-style neuron audit with three controls and game-cluster bootstrap CIs.
@@ -337,11 +340,13 @@ uv run python -m pacneuron.pipeline --phase collect-heldout,h1,confirm,videos,re
 - NMF concepts for policy distillation, including Ms. Pac-Man:
   [Bekkemoen & Langseth 2025](https://mlanthology.org/mlj/2025/bekkemoen2025mlj-interpretable/).
 - An Atari model zoo with neuron visualisation: [Such et al. 2019](https://arxiv.org/abs/1812.07069).
-- Feature visualisation and attribution on CoinRun: [Hilton et al. 2020](https://distill.pub/2020/understanding-rl-vision/).
+- Attribution, dataset-example feature visualisation and model editing on CoinRun:
+  [Hilton et al. 2020](https://distill.pub/2020/understanding-rl-vision/).
 - Channel-level retargeting of a maze agent: [Mini et al. 2023](https://arxiv.org/abs/2310.08043).
 - Planning representations and probe steering in Sokoban:
   [Taufeeque et al. 2024](https://arxiv.org/abs/2407.15421), [Bush et al. 2025](https://arxiv.org/abs/2504.01871);
-  channel-level planning circuits in the same agent: [Taufeeque et al. 2025](https://arxiv.org/abs/2506.10138).
+  channel-level planning circuits in the Taufeeque et al. 2024 agent:
+  [Taufeeque et al. 2025](https://arxiv.org/abs/2506.10138).
 - An SAE on a Ms. Pac-Man DQN, without interventions:
   [DuPlessie 2024](https://math.mit.edu/research/highschool/primes/materials/2024/DuPlessie.pdf).
 - Object-centric Atari RAM extraction: [Delfosse et al. 2023](https://arxiv.org/abs/2306.08649); Atari RAM

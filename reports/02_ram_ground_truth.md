@@ -16,7 +16,8 @@ whether ghosts are edible, remaining pellets) instead of visual impressions.
 - **Identified independently here: frightened ("edible") ghosts.** OCAtari's RAM mode and AtariARI have no address
   for this (OCAtari's vision mode detects edible ghosts by colour). We played one game, found the step at which a
   power pill's bit cleared, and correlated every RAM byte with the presence of the frightened-blue colour
-  `(66, 114, 194)` in the frame. The same registers were documented earlier in
+  `(66, 114, 194)` in the frame (measured here; it is also OCAtari's vision-mode colour for edible ghosts,
+  `ocatari/vision/mspacman.py`). The same registers were documented earlier in
   [jev_deep_rl](https://github.com/taodav/jev_deep_rl) (`jev_rl/mspacman.py`, commit 3f69ca3a, 2026-09-20).
   - Bit 7 of `ram[1+i]` marks ghost *i* as edible. It clears when that ghost is eaten.
   - `ram[116]` is > 0 exactly while at least one ghost's edible bit is set
@@ -67,9 +68,11 @@ consistent with ghosts flashing white near the end of frightened mode, and with 
 separate the two.
 
 ## Learnings
-- No OCAtari release could be installed alongside this project. Releases ≥ 1.1.6 pin `numpy<2.0.0`, which
-  conflicts with this project's numpy ≥ 2.5. The 1.1.5 source distribution failed to build in our environment: its
-  `setup.py` reads a `requirements.txt` that the sdist does not include. Pixel-level validation replaced the OCAtari
+- No recent OCAtari release could be installed alongside this project. 1.1.5 and every later release up to the
+  latest, 2.2.1, declare `numpy<2.0.0` in their `setup.py`, which conflicts with this project's numpy ≥ 2.5. The
+  1.1.5 source distribution also failed to build in our environment: its `setup.py` reads a `requirements.txt` that
+  the sdist does not include. Older releases (≤ 1.1.3) do not pin numpy and were not tried
+  ([PyPI release history](https://pypi.org/project/ocatari/#history)). Pixel-level validation replaced the OCAtari
   cross-check.
 - `ram[116]` is not a pure timer, and the frozen `fright_timer` feature kept the raw byte. In an exploratory check
   (`claim-checks`), masking it would raise this feature's split-half R² by at most

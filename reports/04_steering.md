@@ -131,8 +131,9 @@ Videos (left: unsteered, right: steered, same game seed and sticky-action RNG):
     <!--n:appo_1111:c3_ch18_cell56:spec_disp-->2.23 → 1.97<!--/n--> lattice steps. The agent dithers more. Life-loss
     windows do not explain the drop (Δ without them
     <!--n:appo_1111:c3_ch18_cell56:spec_excl_loss-->-0.065<!--/n-->).
-  - *Reading.* The result is causal: the strongest single-cell perturbation found by the screen reliably changes
-    behaviour on held-out games. It is not evidence that the unit encodes, or creates, a no-go zone at its own location.
+  - *Reading.* The result is causal: the screen's most repelling patch, which is also the strongest perturbation at
+    its cell, reliably changes behaviour on held-out games. It is not evidence that the unit encodes, or creates, a
+    no-go zone at its own location.
 - **Consequences.** Overall play gets worse. We did not measure pellets per maze region, only per game:
   - deaths per 1k in-control steps Δ <!--n:appo_1111:c3_ch18_cell56:deaths_per_1k-->4.2 [3.3, 5.1]<!--/n-->;
   - pellets per 1k in-control steps Δ <!--n:appo_1111:c3_ch18_cell56:pellets_per_1k-->-12.2 [-20.8, -3.8]<!--/n-->;
@@ -157,7 +158,7 @@ Post-hoc specificity checks, agent 1111 (exploratory, same held-out games):
 |---|---|---|---|---|---|
 | conv3 channel 18 set to its p99 at cell (5,6) | 1 (10×) | 0.0% of 63 | 0.483 → 0.565 (Δ 0.082 [0.060, 0.104]) | 2.23 → 1.97 (Δ -0.26 [-0.30, -0.22]) | -0.065 |
 
-| fc candidate (post hoc) | P(voted direction) when the nearest edible ghost is in that direction | frightened, edible ghost elsewhere, direction open | normal mode, direction open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
+| fc candidate (post hoc; d = secondary-metric direction) | P(move in d) when the nearest edible ghost is in d | frightened, edible ghost elsewhere, d open | normal mode, d open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
 |---|---|---|---|---|
 | fc neuron 453 zero-ablated (up) | 0.505 → 0.315 (Δ -0.190 [-0.209, -0.171]) | 0.430 → 0.402 (Δ -0.028 [-0.044, -0.013]) | 0.342 → 0.372 (Δ 0.030 [0.012, 0.049]) | Δ -0.194: 0 of 99 / 0.004 |
 
@@ -230,8 +231,8 @@ What this changes:
   <!--n:appo_1111:fc453_ablate:fright_base-->40.3%<!--/n--> of all in-control steps. Its activation also tracks pellets
   left (table above).
 
-  The ablation's *behavioural* effect is nevertheless context-specific (post hoc, same held-out games). P(UP) changes
-  by <!--n:appo_1111:fc453_ablate:spec_ctx:trigger-->Δ -0.190 [-0.209, -0.171]<!--/n--> when the nearest edible ghost
+  The ablation's *behavioural* effect is nevertheless concentrated in that context (post hoc, same held-out games).
+  P(UP) changes by <!--n:appo_1111:fc453_ablate:spec_ctx:trigger-->Δ -0.190 [-0.209, -0.171]<!--/n--> when the nearest edible ghost
   is up, <!--n:appo_1111:fc453_ablate:spec_ctx:frightened_elsewhere_open-->Δ -0.028 [-0.044, -0.013]<!--/n--> in other frightened states
   with up open, and <!--n:appo_1111:fc453_ablate:spec_ctx:normal_open-->Δ 0.030 [0.012, 0.049]<!--/n--> in normal mode with up
   open. On seeds 10000–10019, <!--n:appo_1111:fc453_ablate:spec_sec_null-->0 of 99<!--/n--> null ablations reduce this

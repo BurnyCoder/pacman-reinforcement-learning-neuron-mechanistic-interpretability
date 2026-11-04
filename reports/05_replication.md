@@ -40,16 +40,17 @@ A rule replicates if its unit passes H2 criteria 1-2 in both agents and the with
 
 - Most-repelling-patch rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n--> as preregistered (approach to the
   steered cell's target falls beyond all 63 null channels in both agents). Post-hoc checks show that the effect is
-  broad navigation damage by the strongest patch, not a local avoidance of the steered cell (see Interpretation).
+  broad navigation damage by the strongest patch at that cell, not a local avoidance of the steered cell (see
+  Interpretation).
 - Ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n-->.
 
 ### Agent 2222
 <!-- BEGIN:models -->
-| agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (no sticky) |
+| agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (episodes and settings not stated) |
 |---|---|---|---|---|---|---|---|
-| [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with MsPacmanNoFrameskip-v4 | 100 | 4082 ± 2032 | 6288 ± 1955 |
-| [appo_2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with MsPacmanNoFrameskip-v4 | 100 | 5161 ± 2056 | 9056 ± 2544 |
-| [appo_3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with MsPacmanNoFrameskip-v4 | 100 | 5056 ± 2358 | 6808 ± 1183 |
+| [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of Ms. Pac-Man play, most likely via envpool MsPacman-v5 (erratum 17) | 100 | 4082 ± 2032 | 6288 ± 1955 |
+| [appo_2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of Ms. Pac-Man play, most likely via envpool MsPacman-v5 (erratum 17) | 100 | 5161 ± 2056 | 9056 ± 2544 |
+| [appo_3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of Ms. Pac-Man play, most likely via envpool MsPacman-v5 (erratum 17) | 100 | 5056 ± 2358 | 6808 ± 1183 |
 <!-- END:models -->
 
 One-job audit (discovery, exploratory):
@@ -225,7 +226,8 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
     <!--n:appo_3333:c3_ch46_cell56:spec_kl_ratio-->34×<!--/n-->). Its return loss exceeds that of
     <!--n:appo_2222:c3_ch3_cell00:spec_damage-->100.0% of its 63 null units<!--/n--> (2222) and
     <!--n:appo_3333:c3_ch46_cell56:spec_damage-->98.4% of its 63 null units<!--/n--> (3333). The rule selects the
-    strongest perturbation, so beating the 63 weaker null channels is close to built in.
+    most repelling patch, and in every agent that patch was also the strongest perturbation at its cell, so beating
+    the 63 weaker null channels is close to built in.
   - *Not local to the steered cell.* Among the 49 cell targets, the steered cell's approach drop ranks
     <!--n:appo_2222:c3_ch3_cell00:spec_rank-->28 of 49<!--/n--> (2222) and
     <!--n:appo_3333:c3_ch46_cell56:spec_rank-->21 of 49<!--/n--> (3333). The median cell drops by
@@ -260,7 +262,7 @@ Post-hoc specificity checks, agent 2222:
 |---|---|---|---|---|---|
 | conv3 channel 3 set to its p99 at cell (0, 0) | 1 (33×) | 0.0% of 63 | 0.432 → 0.399 (Δ -0.033 [-0.052, -0.013]) | 2.26 → 2.24 (Δ -0.03 [-0.05, -0.00]) | -0.036 |
 
-| fc candidate (post hoc) | P(voted direction) when the nearest edible ghost is in that direction | frightened, edible ghost elsewhere, direction open | normal mode, direction open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
+| fc candidate (post hoc; d = secondary-metric direction) | P(move in d) when the nearest edible ghost is in d | frightened, edible ghost elsewhere, d open | normal mode, d open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
 |---|---|---|---|---|
 | fc neuron 379 zero-ablated (up) | 0.549 → 0.526 (Δ -0.023 [-0.045, 0.001]) | 0.411 → 0.418 (Δ 0.008 [-0.003, 0.019]) | 0.342 → 0.354 (Δ 0.012 [-0.001, 0.025]) | Δ -0.029: 0 of 99 / 0.011 |
 
@@ -283,7 +285,7 @@ Post-hoc specificity checks, agent 3333:
 |---|---|---|---|---|---|
 | conv3 channel 46 set to its p99 at cell (5, 6) | 1 (34×) | 1.6% of 63 | 0.454 → 0.515 (Δ 0.060 [0.043, 0.078]) | 2.27 → 2.03 (Δ -0.24 [-0.29, -0.20]) | -0.225 |
 
-| fc candidate (post hoc) | P(voted direction) when the nearest edible ghost is in that direction | frightened, edible ghost elsewhere, direction open | normal mode, direction open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
+| fc candidate (post hoc; d = secondary-metric direction) | P(move in d) when the nearest edible ghost is in d | frightened, edible ghost elsewhere, d open | normal mode, d open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
 |---|---|---|---|---|
 | fc neuron 351 zero-ablated (down) | 0.476 → 0.307 (Δ -0.169 [-0.188, -0.149]) | 0.247 → 0.225 (Δ -0.022 [-0.045, -0.000]) | 0.428 → 0.401 (Δ -0.027 [-0.046, -0.008]) | Δ -0.143: 0 of 99 / 0.006 |
 
