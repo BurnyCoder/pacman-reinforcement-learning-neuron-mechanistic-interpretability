@@ -14,8 +14,8 @@
   - held-out: 100 games, seeds 10000–10099;
   - ALE sticky actions p = 0.25 (preregistered fallback, see `00_summary.md`).
 - **Score per unit.**
-  - R²₁ = out-of-sample R² of the unit against bin means of one feature (20 quantile bins; categories for
-    heading and maze).
+  - R²₁ = out-of-sample R² of the unit against bin means of one feature (20 quantile bins; heading, maze and
+    features with ≤ 20 distinct values use their values as bins).
   - R²_all = out-of-sample R² of `HistGradientBoostingRegressor` on all 40 features.
   - A unit has **one job** if R²_all ≥ 0.3 and max R²₁ ≥ 0.7 · R²_all.
   - Positive pole = post-ReLU activation. Negative pole = the most negative pre-activations; it is shown in the
@@ -104,7 +104,8 @@ has ≤ 20.
   all 40 features still explains far more (median <!--n:appo_1111:median_all_disc-->0.72<!--/n-->).
 - Ghost-related variables, even as conjunctions, explain little.
 - This is reminiscent of [Greydanus et al. 2018](https://arxiv.org/abs/1711.00138), where several partially trained
-  A3C Ms. Pac-Man agents "appeared to be tracking corridors" rather than the ghosts. Attention agents in
+  A3C Ms. Pac-Man agents "appeared to be tracking corridors as a proxy for the PacMan's location" rather than the
+  ghosts. Attention agents in
   [Mott et al. 2019](https://arxiv.org/abs/1906.02500), by contrast, scan the paths ahead for ghosts.
 
 This analysis was not preregistered and is evidence for a hypothesis to test, not a confirmed claim.
@@ -139,7 +140,8 @@ This analysis was not preregistered and is evidence for a hypothesis to test, no
   - untrained network: <!--n:appo_1111:clean_feat:untrained-->maze for 53 of 53<!--/n-->.
 
   Plausibly the untrained units follow the maze id because each maze has its own wall colour, a large change in
-  input pixels (not tested further). So with this dictionary the one-job criterion rewards units that follow pellets left or the maze colour. It is a weak proxy for
+  input pixels (not tested further). So with this dictionary the one-job criterion rewards units that follow pellets
+  left or the maze id. It is a weak proxy for
   the semantic "one main job" of Goodfire's free-text labels, and H1's verdict says little about interpretability in
   either direction.
 - Alive units are sparse: the median one is active on <!--n:appo_1111:median_active-->1.0%<!--/n--> of in-control

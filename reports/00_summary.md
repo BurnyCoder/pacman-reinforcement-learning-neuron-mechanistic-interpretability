@@ -19,22 +19,23 @@ before the results and are not regenerated.
   position. A later check shows what it actually does: it disturbs the agent's navigation everywhere (it heads
   toward almost *every* spot less often and dies more). It is also a much bigger jolt than the other 63 channels.
   One agent clearly stays away from the steered spot, one leaves the whole half of the maze that contains it, and
-  one avoids a different region. Turning off a unit that votes "go up" makes the agent go up toward edible ghosts less often, and only in that situation. It does not
-  consistently change how many ghosts get eaten.
+  one avoids a different region. Turning off a unit that votes "go up" makes the agent go up toward edible ghosts
+  less often, mostly in that situation. It does not consistently change how many ghosts get eaten.
 
 ## Models
 <!-- BEGIN:models -->
-| agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (no sticky) |
+| agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | mean score ± SD | model-card score (episodes and settings not stated) |
 |---|---|---|---|---|---|---|---|
-| [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with MsPacmanNoFrameskip-v4 | 100 | 4082 ± 2032 | 6288 ± 1955 |
-| [appo_2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with MsPacmanNoFrameskip-v4 | 100 | 5161 ± 2056 | 9056 ± 2544 |
-| [appo_3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with MsPacmanNoFrameskip-v4 | 100 | 5056 ± 2358 | 6808 ± 1183 |
+| [appo_1111](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of Ms. Pac-Man play, most likely via envpool MsPacman-v5 (erratum 17) | 100 | 4082 ± 2032 | 6288 ± 1955 |
+| [appo_2222](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_2222) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of Ms. Pac-Man play, most likely via envpool MsPacman-v5 (erratum 17) | 100 | 5161 ± 2056 | 9056 ± 2544 |
+| [appo_3333](https://huggingface.co/edbeeching/atari_2B_atari_mspacman_3333) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 (ReLU) -> linear policy (9) + value | 1,689,258 | APPO (Sample Factory 2.0), maximise clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of Ms. Pac-Man play, most likely via envpool MsPacman-v5 (erratum 17) | 100 | 5056 ± 2358 | 6808 ± 1183 |
 <!-- END:models -->
 
 All three are public checkpoints by Edward Beeching on Hugging Face. They were trained with Sample Factory 2.0
 APPO ([Petrenko et al. 2020](https://arxiv.org/abs/2006.11751)) purely from game reward, for 2B emulator frames
-(about 500M agent steps), on `MsPacmanNoFrameskip-v4` with the standard DeepMind wrappers. No imitation learning was
-involved.
+(about 500M agent steps), with standard DeepMind-style Atari preprocessing. They most likely played through
+envpool's `MsPacman-v5` rather than the gym `MsPacmanNoFrameskip-v4` wrapper chain that this study rebuilds
+(erratum 17). No imitation learning was involved.
 
 ## Experiments
 | # | experiment | status | report |
@@ -45,7 +46,8 @@ involved.
 | 4 | Steering, frozen candidates vs matched nulls (H2) | H2 <!--n:appo_1111:h2_verdict-->supported<!--/n--> | [04_steering.md](04_steering.md) |
 | 5 | Replication on agents 2222 and 3333 (H3) | see report | [05_replication.md](05_replication.md) |
 
-Preregistration: [preregistration.md](preregistration.md) (before any data) and
+Preregistration: [preregistration.md](preregistration.md) (before any neuron-activation data; only the engineering
+pilot games it declares were played before it) and
 [preregistration_addendum.md](preregistration_addendum.md) (frozen candidates, before held-out data).
 
 ## Key results (seed 1111)
@@ -118,9 +120,10 @@ are not edited. Where they or earlier reports were wrong or incomplete, the corr
    188 is active on <!--n:appo_1111:fc188:active-->2.1%<!--/n--> of in-control discovery steps.
 4. **H3 scope.** Preregistration §7 defines H3 only for candidates that pass H2. fc 453 failed H2, so the replication
    of the fc-ablation rule is exploratory. The H3 verdict also applies a further Holm correction over the two
-   agents (§7 "Holm over seeds") on top of the within-agent Holm. Two details of `derive_candidates` are not in the
-   frozen rule text: the secondary direction is the edible-direction feature with the highest R² for the selected
-   unit, and the fc rule is not explicitly restricted to alive units (both selected units, 379 and 351, are alive).
+   agents (§7 "Holm over seeds") on top of the within-agent Holm. Two details of `derive_candidates` differ from the
+   frozen rule text. The text does not say how to choose the secondary direction; the code takes the edible-direction
+   feature with the highest R² for the selected unit. The text says "the alive fc unit", but the code does not check
+   that the unit is alive. Both selected units, 379 and 351, are alive, so this did not change the selection.
 5. **Untrained control.** Preregistration §5 says "the 512 fc units of the untrained control network". The code
    scores its alive units (499, 500 and 501 for the three agents), and it uses initialisation seed 0 for every agent.
 6. **Metric operationalisations.**
@@ -171,7 +174,8 @@ verdicts are unchanged; what changes is how the passing results may be interpret
     p99). In every agent the selected patch has the largest open-loop KL at its cell
     (<!--n:appo_1111:c3_ch18_cell56:spec_kl_rank-->1 of 64<!--/n-->,
     <!--n:appo_2222:c3_ch3_cell00:spec_kl_rank-->1 of 64<!--/n-->,
-    <!--n:appo_3333:c3_ch46_cell56:spec_kl_rank-->1 of 64<!--/n-->), and the H3 rule selects it for that reason. So
+    <!--n:appo_3333:c3_ch46_cell56:spec_kl_rank-->1 of 64<!--/n-->). The H3 rule selects the most repelling patch,
+    and in all three agents that was also the strongest one at its cell. So
     "the repulsion is a property of this channel at this place, not of perturbing conv3 there" was not supported. A
     strength-matched null (e.g. KL-matched doses on fresh seeds) is untested.
 13. **H1 secondary controls were not reported.** Agent minus non-negative mixtures:
@@ -198,6 +202,30 @@ verdicts are unchanged; what changes is how the passing results may be interpret
     outputs, and GitHub's push log shows both derived files were pushed (06:16 and 07:03 local time) before any
     2222/3333 held-out result was committed (07:35). `prereg.require_frozen_for` now gates all four phases on it.
 
+## Errata from the independent fact-check (2026-11-04)
+
+Smaller wording corrections from this check were made in place. One finding changes what the fidelity gate shows:
+
+17. **Training most likely used envpool, not the gym wrapper chain rebuilt here.**
+    - *Evidence.* The agents' `cfg.json` passes `--env_agents=512` with `--batched_sampling=True` and
+      `--num_envs_per_worker=1`. In Sample Factory 2.0.x, `--env_agents` is defined only by the envpool Atari example
+      (`sf_examples/envpool/atari/envpool_atari_params.py`). The runs are named `20221014_…`. In the 12–15 October
+      2022 commits of the models' author's envpool branch
+      ([PR #203](https://github.com/alex-petrenko/sample-factory/pull/203), merged 2022-10-22), the Atari example's
+      `make_atari_env` called `envpool.make(..., reward_clip=True, episodic_life=True)` and returned before the gym
+      wrappers.
+    - *What differs.* envpool uses the same DeepMind-style settings: up to 30 no-ops, frame skip 4 with a max over
+      the last two frames, episodic life, reward clipping, an 84×84 INTER_AREA resize, a 4-frame stack and no
+      sticky actions by default. But it converts each frame to grayscale with ALE's palette *before* max-pooling and
+      resizing ([`atari_env.h` at the time](https://github.com/sail-sg/envpool/blob/61519b40318efe057acb30c92d7e74726e8966ac/envpool/atari/atari_env.h)).
+      The gym chain max-pools RGB frames, resizes, then converts with OpenCV.
+    - *Consequence.* The fidelity gate shows that this rebuild matches Sample Factory's gym Atari path bit-exactly,
+      not that it reproduces the observations seen in training. The size of that input difference was not measured
+      (an envpool-vs-gym comparison on the same actions would settle it). The agent still plays well on the rebuilt
+      inputs: without sticky actions, agent 1111 scores <!--n:appo_1111:score_nosticky-->6384<!--/n--> on the
+      discovery seeds, against 6288 on its model card.
+    - The preregistration (§2, "the training wrapper chain") and earlier reports stated otherwise.
+
 ## Planned items not done
 
 - **Planned but not done.**
@@ -206,9 +234,10 @@ verdicts are unchanged; what changes is how the passing results may be interpret
   - A per-ghost "visible in the observation" flag (Atari sprite flicker can hide a ghost that RAM reports).
   - Training dynamics over the 36 milestone checkpoints of agent 1111.
   - Replication on agents trained with other algorithms (Stable-Baselines3 DQN/PPO).
-  - The OCAtari cross-check of RAM decoding, replaced by pixel-level validation. OCAtari releases ≥ 1.1.6 pin
-    numpy < 2, which is incompatible with this project's numpy ≥ 2.5, and the 1.1.5 source distribution failed to
-    build in our environment.
+  - The OCAtari cross-check of RAM decoding, replaced by pixel-level validation. OCAtari 1.1.5 and every later
+    release up to the latest, 2.2.1, pin numpy < 2 in their `setup.py`, which is incompatible with this project's
+    numpy ≥ 2.5; the 1.1.5 source distribution also failed to build in our environment. Older releases (≤ 1.1.3) do
+    not pin numpy and were not tried ([PyPI release history](https://pypi.org/project/ocatari/#history)).
 
 ## Glossary
 - **Reward-only RL / no imitation learning**: the agent learns from the game score alone, not from human
@@ -229,8 +258,8 @@ verdicts are unchanged; what changes is how the passing results may be interpret
 - **Privileged basis**: individual neurons are more interpretable than random directions in the same layer.
 - **DLA (direct logit attribution)**: a unit's weight column in the policy head, i.e. how much it votes for each
   action ([Elhage et al. 2021](https://transformer-circuits.pub/2021/framework/index.html)).
-- **Sticky actions**: with probability 0.25 the console repeats the previous action, which adds randomness
-  (Machado et al. 2018).
+- **Sticky actions**: with probability 0.25 the emulator (ALE) repeats the previous action, which adds randomness
+  ([Machado et al. 2018](https://arxiv.org/abs/1709.06009)).
 - **Paired design / common random numbers**: steered and baseline games share the game seed (start state,
   random draws), so differences are due to the intervention. An unsteered A/A arm confirms that the same seed
   replays the same game.

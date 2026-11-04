@@ -8,7 +8,8 @@ mkdir -p "$WORK" && cd "$WORK"
 uv venv --python 3.10 .venv
 # shellcheck disable=SC1091
 source .venv/bin/activate
-# Era-matched stack: SF 2.0.3 requires gym>=0.26.1,<1.0 and torch<2.0; ale-py 0.8.1 ships with gym 0.26.2's atari extra.
+# Era-matched stack: SF 2.0.3 requires gym>=0.26.1,<1.0 and torch<2.0; gym 0.26.2's atari extra requires ale-py~=0.8.0,
+# and 0.8.1 is the newest match (released 2023-02-17, after training; its gym registration is identical to 0.8.0's).
 uv pip install "sample-factory==2.0.3" "gym[atari,accept-rom-license]==0.26.2" "ale-py==0.8.1" \
   "torch==1.13.1" --extra-index-url https://download.pytorch.org/whl/cpu "numpy<2" opencv-python huggingface_hub
 python - <<'EOF'

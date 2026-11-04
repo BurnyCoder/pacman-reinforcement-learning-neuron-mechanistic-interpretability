@@ -15,14 +15,14 @@ uv run python -m pacneuron.pipeline --phase <phase>[,<phase>...] --seed {1111|22
 | `audit` | discovery games | `results/audit_<agent>.json`, `DATA_DIR/analysis/audit_<agent>.npz` | exploratory split-half audit, all fc units + controls, conv3 channels |
 | `conjunctions` | discovery games | `results/conjunctions_<agent>.json` | exploratory place × heading etc. |
 | `conv3-states` | discovery games | `results/conv3_states_<agent>.json` | exploratory global-state AUROCs |
-| `screen` | discovery games, audit | `results/screen_<agent>.json` | open-loop conv3 patch + fc ablation screens |
+| `screen` | discovery games, audit | `results/screen_<agent>.json`, `DATA_DIR/analysis/screen_<agent>.npz` | open-loop conv3 patch + fc ablation screens |
 | `pilot` | `results/pilot_specs_<agent>.json` | `DATA_DIR/steer/<agent>/pilot/*`, `results/pilot_<agent>.json` | discovery seeds 0–29 |
 | `derive-candidates` | audit, screen, frozen rules | `results/candidates_<agent>.json` | replication agents only; commit before held-out |
-| `collect-heldout` | frozen files (lock) | `DATA_DIR/rollouts/<agent>/heldout/*` | refuses to run unless the preregistration lock holds |
+| `collect-heldout` | frozen files (lock) | `DATA_DIR/rollouts/<agent>/heldout/*`, `results/collect_<agent>_heldout.json` | refuses to run unless the preregistration lock holds |
 | `h1` | discovery + held-out | `results/h1_<agent>.json` | confirmatory H1 |
 | `confirm` | frozen candidates, held-out baseline | `DATA_DIR/steer/<agent>/heldout/*`, `results/confirm_<agent>.json` | confirmatory H2/H3 incl. null arms |
 | `offtarget` | confirm arms | `results/offtarget_<agent>.json` | §6 criterion 3: two-sided tests + BH |
-| `attribution` | discovery games, candidates | `results/attribution_<agent>.json` | upstream contributions, occlusion, stratified AUROC, unique R² |
+| `attribution` | discovery games, candidates | `results/attribution_<agent>.json`, `DATA_DIR/analysis/topframe_<agent>_*.npy` | upstream contributions, occlusion, stratified AUROC, unique R²; the top frames are the occlusion-figure backgrounds |
 | `occupancy` | confirm arms | `results/occupancy_<agent>.json` | where the agent goes with/without conv3 patches |
 | `specificity` | confirm arms, `DATA_DIR/analysis/screen_<agent>.npz` | `results/specificity_<agent>.json` | post hoc (added by the 2026-11-01 audit): approach toward all 49 cell targets, region occupancy, open-loop KL rank, damage vs nulls and navigation for conv3 candidates; trigger-context rates and a null for the fc secondary metric; start-cluster ICC for every candidate |
 | `aa-control` | frozen files (lock), held-out baseline | `DATA_DIR/steer/<agent>/heldout/aa_noop/*`, `results/aa_control_<agent>.json` | exploratory: unsteered replay of 50 held-out seeds; checks that the seed pairing holds |

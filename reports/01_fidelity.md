@@ -1,4 +1,4 @@
-# Experiment 1: Fidelity gate (does our code run the pretrained agent exactly as it was trained?)
+# Experiment 1: Fidelity gate (does our code run the pretrained agent exactly as Sample Factory does?)
 
 ## Why
 Sample Factory 2.0.x has no native Windows support ("There is no Windows support at this time",
@@ -11,12 +11,20 @@ describe a different network. Two common pitfalls:
 - The observation normaliser (running mean/std, float64 buffers cast to float32, clip ±5) must be applied exactly.
 
 ## Method
-- **Reference.** `scripts/sf_golden_wsl.sh` builds the training-era stack in WSL: sample-factory 2.0.3, gym 0.26.2,
-  ale-py 0.8.1, torch 1.13.1 (CPU). The pretrained models were uploaded on 2022-10-20, before sample-factory 2.0.0
-  was released on PyPI (2022-12-01), so no released version is exactly the training code. 2.0.3 (2023-02-09) is the
-  last release built on gym 0.26 (2.1 moved to gymnasium; PyPI metadata). The Atari wrapper file
-  `sf_examples/atari/atari_utils.py` is byte-identical in the v2.0.0 and v2.0.2 git tags; 2.0.3 has no git tag. With Sample Factory's own `make_atari_env` and `create_actor_critic`, the script plays a fixed
-  random action sequence (env seed 123) and records observations, logits and values.
+- **Reference.** `scripts/sf_golden_wsl.sh` builds the closest released stack in WSL and runs Sample Factory's gym
+  Atari path (training most likely used its envpool path instead; see Learnings): sample-factory 2.0.3, gym 0.26.2,
+  ale-py 0.8.1, torch 1.13.1 (CPU). The pretrained models were uploaded on 2022-10-20 (1111) and 2022-10-21 (2222,
+  3333; UTC, Hugging Face API `createdAt`), before sample-factory 2.0.0 was released on PyPI (2022-12-01), so no
+  released version is exactly the training code.
+  - 2.0.3 (2023-02-09) is the last release built on gym 0.26; the next release, 2.1.1, requires gymnasium (PyPI
+    metadata).
+  - The Atari wrapper file `sf_examples/atari/atari_utils.py` is byte-identical in the v2.0.0 and v2.0.2 git tags;
+    2.0.3 has no git tag.
+  - gym 0.26.2's `atari` extra requires `ale-py~=0.8.0`. ale-py 0.8.1 is the newest match; it was released on
+    2023-02-17, after training, but its gym registration (`src/python/gym.py`) is the same as in 0.8.0.
+
+  With Sample Factory's own `make_atari_env` and `create_actor_critic`, the script plays a fixed random action
+  sequence (env seed 123) and records observations, logits and values.
 - **Our implementation.**
   - `src/pacneuron/env.py`: wrappers ported from `sample_factory/envs/env_wrappers.py`, plus gym-0.26-style
     resize/grayscale/frame-stack using cv2.
@@ -48,9 +56,16 @@ one, not a bit-exact copy.
 ## Learnings
 - ale-py 0.12 still registers `MsPacmanNoFrameskip-v4` with `max_num_frames_per_episode=108000`, the same as ale-py
   0.8.1 ([`src/python/gym.py` at v0.8.1](https://github.com/Farama-Foundation/Arcade-Learning-Environment/blob/v0.8.1/src/python/gym.py)).
-  The episode limit therefore matches training.
+  The episode limit therefore matches Sample Factory's gym path. (Under envpool, which training most likely used,
+  the default limit counted 108,000 agent steps rather than frames; this cannot matter here, because every game in
+  this study ends far earlier (per-game step counts in `results/collect_*.json`).)
 - Rewriting the Atari wrappers by hand (`src/pacneuron/env.py`) proved safer than relying on any library version's
   wrapper semantics.
 - A score check alone would be a weak gate: the model card reports 6288 ± 1955 (SD) without the number of episodes,
   and our own 100-game scores vary by thousands of points. The golden trajectory is the real gate.
 - The gate must cover the device used for inference. A CPU-only gate missed the TF32 difference above.
+- The gate must also cover the environment code path used in training. The agents' `cfg.json` (`--env_agents=512`,
+  `--batched_sampling=True`) points to Sample Factory's envpool path (`envpool.make("MsPacman-v5", ...)`), not the
+  gym wrapper chain this gate checks. envpool converts frames to grayscale with ALE's palette before max-pooling and
+  resizing, so its observations can differ slightly from ours; this was not measured. Details and sources:
+  erratum 17 in [00_summary.md](00_summary.md).

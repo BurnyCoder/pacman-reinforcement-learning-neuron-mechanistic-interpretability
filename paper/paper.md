@@ -1,7 +1,7 @@
 ---
 title: "Are the neurons of a reward-trained Ms. Pac-Man agent already clean? A preregistered neuron audit with causal steering"
 author: "Libor \"Burny\" Burian"
-date: "October 2026"
+date: "October 2026 (revised November 2026)"
 ---
 
 # Abstract
@@ -12,9 +12,10 @@ language networks are largely interpretable; in its preliminary Qwen3-32B audits
 learned Atari Ms. Pac-Man from game reward alone. They are public Sample Factory APPO agents with a Nature-CNN torso,
 trained for 2B emulator frames (about 500M agent steps).
 
-We re-implement the agents in PyTorch and check them against the original stack: observations are bit-exact and
-logits agree to <!--n:fid_logit-->1.1e-05<!--/n--> on CPU (to <!--n:fid_logit_gpu-->4.5e-02<!--/n--> on the GPU used
-for data collection). We decode exact game state from the console RAM, including frightened-mode registers that we
+We re-implement the agents in PyTorch and check them against Sample Factory's gym Atari stack: observations are
+bit-exact and logits agree to <!--n:fid_logit-->1.1e-05<!--/n--> on CPU (to <!--n:fid_logit_gpu-->4.5e-02<!--/n--> on
+the GPU used for data collection). Training itself most likely used Sample Factory's envpool path, whose
+preprocessing differs slightly; that difference was not measured. We decode exact game state from the console RAM, including frightened-mode registers that we
 identified independently from sprite colours (<!--n:appo_1111:edible_agree-->97.1%<!--/n--> per-ghost agreement;
 already documented in jev_deep_rl), and label every unit against 40 ground-truth features under a preregistered
 protocol.
@@ -47,14 +48,14 @@ percentile, so the preregistered H2 passes. Post-hoc checks on the same games li
 
 It is a causal handle on navigation, not a local "no-go zone".
 
-Ablating fc neuron 453, which votes UP, reduces moving up toward edible ghosts. The reduction is specific to that
-context, and no null ablation matches it. It does not significantly reduce ghosts eaten per power pill, so H2 fails
+Ablating fc neuron 453, which votes UP, reduces moving up toward edible ghosts. The reduction is concentrated in that
+context (a much smaller drop elsewhere in frightened mode), and no null ablation matches it. It does not significantly reduce ghosts eaten per power pill, so H2 fails
 for this candidate. Its best direction label ("edible ghost is up") does not survive confound control.
 
 **Replication.** Frozen selection rules applied to the other two agents give the following (H3):
 
-- most-repelling-patch rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n--> as preregistered. Post hoc, it always
-  selects the strongest patch at its cell. The agent clearly leaves the steered region only in agent 3333 (partly
+- most-repelling-patch rule: <!--n:h3:c3_ch18_cell56-->replicates<!--/n--> as preregistered. Post hoc, in all three
+  agents it selected the strongest patch at its cell. The agent clearly leaves the steered region only in agent 3333 (partly
   in 2222);
 - ghost-hunting ablation rule: <!--n:h3:fc453_ablate-->does not replicate<!--/n--> (exploratory, because fc 453
   failed H2).
@@ -88,15 +89,16 @@ attribution graphs.
   [(DuPlessie 2024)](https://math.mit.edu/research/highschool/primes/materials/2024/DuPlessie.pdf).
 
 Single-channel steering of RL agents has been shown for a Procgen maze agent
-[(Mini et al. 2023)](https://arxiv.org/abs/2310.08043). In a Sokoban planning agent, plans have been steered with
-probe directions [(Taufeeque et al. 2024](https://arxiv.org/abs/2407.15421); [Bush et al. 2025)](https://arxiv.org/abs/2504.01871)
-and with channel-level interventions [(Taufeeque et al. 2025)](https://arxiv.org/abs/2506.10138). To our knowledge,
+[(Mini et al. 2023)](https://arxiv.org/abs/2310.08043). In recurrent (DRC) Sokoban planning agents, plans have been
+steered with probe directions [(Taufeeque et al. 2024](https://arxiv.org/abs/2407.15421), v2 and later;
+[Bush et al. 2025)](https://arxiv.org/abs/2504.01871), and the Taufeeque et al. 2024 agent with channel-level
+interventions [(Taufeeque et al. 2025)](https://arxiv.org/abs/2506.10138). To our knowledge,
 no published work has steered individual neurons of a reward-trained Ms. Pac-Man agent.
 
 **Contributions.**
 
 1. A dependency-light re-implementation of the public Sample Factory Ms. Pac-Man agents with a golden fidelity
-   test (bit-exact observations; logits agree to 1.1e-5 on CPU).
+   test against Sample Factory's gym Atari path (bit-exact observations; logits agree to 1.1e-5 on CPU).
 2. RAM ground truth for Ms. Pac-Man, including a pixel validation of the frightened-mode register `ram[116]` and the
    per-ghost edible bits (bit 7 of `ram[1+i]`), and a maze lattice graph. We found these registers independently;
    [jev_deep_rl](https://github.com/taodav/jev_deep_rl) documented them first.
@@ -134,8 +136,11 @@ no published work has steered individual neurons of a reward-trained Ms. Pac-Man
     frameskip 4), clipped reward, γ = 0.99, no RNN;
   - Nature-CNN torso [(Mnih et al. 2015)](https://www.nature.com/articles/nature14236) (conv 32/64/64; Sample
     Factory's `convnet_atari`) → fc 512 ReLU → linear policy (9 actions) and value heads.
-- **Environment.** The wrapper chain is `MsPacmanNoFrameskip-v4` → no-op reset → max-and-skip 4 → episodic life →
-  reward clipping → 84×84 grayscale → stack 4.
+- **Environment.** We use Sample Factory's gym Atari wrapper chain: `MsPacmanNoFrameskip-v4` → no-op reset →
+  max-and-skip 4 → episodic life → reward clipping → 84×84 grayscale → stack 4. The agents' `cfg.json`
+  (`--env_agents=512`, `--batched_sampling=True`) indicates that training most likely ran through Sample Factory's
+  envpool path (`MsPacman-v5`), which has the same settings but converts frames to grayscale before max-pooling and
+  resizing (`reports/00_summary.md`, erratum 17).
 - **Fidelity.** We reproduce the wrapper chain and network in PyTorch and verify both against a golden trajectory
   generated with sample-factory 2.0.3, gym 0.26.2 and ale-py 0.8.1:
   - 0 mismatched observations in <!--n:fid_steps-->446<!--/n--> steps;
@@ -276,7 +281,7 @@ What the one-job units are (exploratory, discovery split-half). Every one-job un
 - non-negative mixtures: <!--n:appo_1111:clean_feat:nonneg_mix-->n_pellets for 8 of 8<!--/n-->;
 - untrained network: <!--n:appo_1111:clean_feat:untrained-->maze for 53 of 53<!--/n-->.
 
-With this dictionary the criterion mostly detects units that follow pellets left or the maze colour, so the H1
+With this dictionary the criterion mostly detects units that follow pellets left or the maze id, so the H1
 verdict in either direction says little about semantic interpretability.
 
 <!-- BEGIN:h1robust_appo_1111 -->
@@ -373,7 +378,7 @@ target nodes of all 49 conv3 cells:
   Windows with a life loss do not explain the drop (Δ without them
   <!--n:appo_1111:c3_ch18_cell56:spec_excl_loss-->-0.065<!--/n-->).
 
-The fc 453 ablation, by contrast, is context-specific. P(UP) changes by
+The fc 453 ablation, by contrast, acts mostly in its trigger context. P(UP) changes by
 <!--n:appo_1111:fc453_ablate:spec_ctx:trigger-->Δ -0.190 [-0.209, -0.171]<!--/n--> when the nearest edible ghost is
 up, <!--n:appo_1111:fc453_ablate:spec_ctx:frightened_elsewhere_open-->Δ -0.028 [-0.044, -0.013]<!--/n--> in other frightened states with
 up open, and <!--n:appo_1111:fc453_ablate:spec_ctx:normal_open-->Δ 0.030 [0.012, 0.049]<!--/n--> in normal mode.
@@ -389,7 +394,7 @@ up open, and <!--n:appo_1111:fc453_ablate:spec_ctx:normal_open-->Δ 0.030 [0.012
 |---|---|---|---|---|---|
 | conv3 channel 18 set to its p99 at cell (5,6) | 1 (10×) | 0.0% of 63 | 0.483 → 0.565 (Δ 0.082 [0.060, 0.104]) | 2.23 → 1.97 (Δ -0.26 [-0.30, -0.22]) | -0.065 |
 
-| fc candidate (post hoc) | P(voted direction) when the nearest edible ghost is in that direction | frightened, edible ghost elsewhere, direction open | normal mode, direction open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
+| fc candidate (post hoc; d = secondary-metric direction) | P(move in d) when the nearest edible ghost is in d | frightened, edible ghost elsewhere, d open | normal mode, d open | secondary Δ vs 99 null ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |
 |---|---|---|---|---|
 | fc neuron 453 zero-ablated (up) | 0.505 → 0.315 (Δ -0.190 [-0.209, -0.171]) | 0.430 → 0.402 (Δ -0.028 [-0.044, -0.013]) | 0.342 → 0.372 (Δ 0.030 [0.012, 0.049]) | Δ -0.194: 0 of 99 / 0.004 |
 
@@ -535,7 +540,8 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
     steps). Exploratorily, they are conjunctive: position × heading explains them far better than any single
     feature, and position (itself a joint x × y variable) does most of that.
 - **What the units are.** They resemble place cells more than "ghost detectors". Greydanus et al. report something
-  similar: several partially trained A3C Ms. Pac-Man agents "appeared to be tracking corridors" rather than the ghosts
+  similar: several partially trained A3C Ms. Pac-Man agents "appeared to be tracking corridors as a proxy for the
+  PacMan's location" rather than the ghosts
   [(Greydanus et al. 2018)](https://arxiv.org/abs/1711.00138). Attention-augmented agents, by contrast, scan the paths
   ahead for ghosts [(Mott et al. 2019)](https://arxiv.org/abs/1906.02500). Our agents are fully trained APPO agents,
   so both comparisons are loose.
@@ -548,10 +554,10 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
 - **Causally yes; specifically, only partly.**
   - *What holds.* Patching a single conv3 unit reliably changes behaviour on held-out games, beyond all 63 other
     channels at the same position, and the same selection rule finds such a unit in both other agents (H3).
-  - *What the post-hoc checks remove.* The approach drop is not local to the steered cell. The selected unit is
-    always the strongest perturbation at its cell, so the dose-rule null does not control for strength. The agent
+  - *What the post-hoc checks remove.* The approach drop is not local to the steered cell. In all three agents the
+    selected unit is the strongest perturbation at its cell, so the dose-rule null does not control for strength. The agent
     clearly leaves the steered region only in agent 3333, partly in 2222, and not in 1111.
-  - *Reading.* The conv3 result is best described as "the strongest single-cell patch disrupts goal-directed
+  - *Reading.* The conv3 result is best described as "the strongest patch at a cell disrupts goal-directed
     navigation". It is not "a unit that encodes a place to avoid". A strength-matched null (doses chosen to match
     the candidate's open-loop KL, on fresh seeds) is the experiment that could separate the two; we did not run it.
 - **Steering is destructive.** Every frozen candidate in every agent raises deaths per 1,000 steps and lowers the
@@ -570,7 +576,8 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
 
 **Methodological lessons.**
 
-1. Bit-exact fidelity tests are cheap and necessary, and must cover the inference device. Library defaults changed
+1. Bit-exact fidelity tests are cheap and necessary, and must cover the inference device and the environment code
+   path actually used in training (here most likely envpool, which our gate does not cover). Library defaults changed
    under us (gymnasium's grayscale). Our CPU-only gate missed a <!--n:fid_logit_gpu-->4.5e-02<!--/n--> logit
    difference from cuDNN TF32 on the GPU. The A/A arm shows that it changed no sampled action in
    <!--n:appo_1111:aa_identical-->50 of 50<!--/n--> paired games (agent 1111).
@@ -597,13 +604,18 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
   - A per-ghost "visible in the observation" flag (Atari sprite flicker can hide a ghost that RAM reports).
   - Training dynamics over the 36 milestone checkpoints of agent 1111.
   - Replication on agents trained with other algorithms (Stable-Baselines3 DQN/PPO).
-  - The OCAtari cross-check of RAM decoding, replaced by pixel-level validation. OCAtari releases ≥ 1.1.6 pin
-    numpy < 2, which is incompatible with this project's numpy ≥ 2.5, and the 1.1.5 source distribution failed to
-    build in our environment.
+  - The OCAtari cross-check of RAM decoding, replaced by pixel-level validation. OCAtari 1.1.5 and every later
+    release up to the latest, 2.2.1, pin numpy < 2 in their `setup.py`, which is incompatible with this project's
+    numpy ≥ 2.5; the 1.1.5 source distribution also failed to build in our environment. Older releases (≤ 1.1.3) do
+    not pin numpy and were not tried ([PyPI release history](https://pypi.org/project/ocatari/#history)).
 - **Inference device.** All rollouts ran on a GPU with PyTorch's default cuDNN TF32 convolutions, which the CPU
   fidelity gate does not cover: logits differ from Sample Factory by up to
   <!--n:fid_logit_gpu-->4.5e-02<!--/n-->. The agent we analyse is therefore a very close numerical neighbour of the
   trained one, not a bit-exact copy. The A/A arm shows that the seed pairing is intact.
+- **Training environment.** The fidelity gate checks Sample Factory's gym Atari path. Training most likely used its
+  envpool path, whose grayscale conversion comes before max-pooling and resizing, so the analysed inputs may differ
+  slightly from the training inputs. This was not measured. Without sticky actions, agent 1111 scores
+  <!--n:appo_1111:score_nosticky-->6384<!--/n--> on the discovery seeds, against 6288 on its model card.
 - **`ram[116]`.** Its upper bits change when ghosts are eaten (set on
   <!--n:appo_1111:gt_timer_upper-->18.5%<!--/n--> of frightened steps), and the frozen `fright_timer` feature used
   the raw byte. Masking it (exploratory) raises one feature's split-half R² by at most
@@ -611,7 +623,7 @@ p = 0.0001 is the smallest attainable value of the 10,000-permutation sign-flip 
   (<!--n:appo_1111:mask_newly_clean-->0<!--/n--> units).
 - **Nulls and clusters.** Each null unit is estimated from 20 games against the candidate's 50, which widens the
   null distribution and so raises the bar for the specificity criterion. The conv3 null matched the dose rule, not
-  perturbation strength: the selected patch is always the strongest at its cell (Section 4.3). The
+  perturbation strength: in all three agents the selected patch is the strongest at its cell (Section 4.3). The
   start-state-cluster bootstrap has only <!--n:appo_1111:n_start_groups-->4<!--/n--> clusters. The intraclass
   correlation of the paired Δ within clusters is <!--n:spec_icc_range-->0.000–0.125<!--/n-->. With a design-effect
   correction, <!--n:spec_passes_survive-->every preregistered pass stays below 0.05<!--/n-->; the closest is
@@ -640,13 +652,14 @@ exact single game variables. They are sparse and, by exploratory evidence, conju
 
 **Steerable?** Causally yes, specifically only in part.
 
-- *conv3.* A single conv3 patch passes the preregistered steering test beyond all 63 dose-matched null channels,
+- *conv3.* A single conv3 patch passes the preregistered steering test beyond all 63 null channels at its cell
+  (each set to its own p99),
   and its selection rule replicated in both other agents. Post-hoc checks show what it does: it is the strongest
   perturbation at its cell and disrupts navigation across the maze. It makes the agent clearly avoid the steered
   region in one of three agents (3333), and partly in a second (2222).
 - *fc.* Zero-ablating a single fc unit reduces a predicted piece of ghost-chasing (moving up toward an edible
-  ghost). That reduction is specific to its context and to the unit, but it does not significantly change ghosts
-  eaten.
+  ghost). That reduction is concentrated in its context and larger than for any of 99 null ablations, but it does
+  not significantly change ghosts eaten.
 - *Cost.* These effects come with substantial collateral damage.
 
 **Toolkit.** The fidelity-checked models, RAM ground truth, preregistration and microscope make these agents a

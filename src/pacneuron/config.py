@@ -48,10 +48,13 @@ class ModelSpec:
     reported_std_reward: float
 
 
-# Sample Factory 2.0 APPO agents trained for 2B emulator frames (~500M agent steps at frameskip 4) on
-# MsPacmanNoFrameskip-v4 (reward only): cfg.json train_for_env_steps=2e9 with summaries_use_frameskip=True.
+# Sample Factory 2.0 APPO agents trained for 2B emulator frames (~500M agent steps at frameskip 4) on Ms. Pac-Man
+# (reward only): cfg.json train_for_env_steps=2e9 with summaries_use_frameskip=True. cfg.json also passes
+# --env_agents=512 --batched_sampling=True, i.e. most likely Sample Factory's envpool path (MsPacman-v5), not the gym
+# MsPacmanNoFrameskip-v4 chain rebuilt in env.py (reports/00_summary.md, erratum 17).
 # Source: https://huggingface.co/edbeeching/atari_2B_atari_mspacman_1111 (cfg.json, README.md).
-# cfg.json has load_checkpoint_kind="latest", so the model-card reward refers to the latest checkpoint.
+# cfg.json has load_checkpoint_kind="latest", so the model-card reward presumably refers to the latest checkpoint
+# (the evaluation command could override it; the card does not say).
 # Revisions are the HF git commit SHAs at the time of this study (pinned for reproducibility).
 # All three runs end with the same "latest" checkpoint name (policy version 976624, env-step counter
 # 2,000,125,952 = emulator frames).
@@ -65,7 +68,8 @@ MODELS: dict[str, ModelSpec] = {
                       _LATEST, "1364c94752de18e6d52b419e73681802de270b05", 6808.00, 1183.09),
 }
 
-# Environment id used at training time (Sample Factory sf_examples/atari/atari_utils.py, AtariSpec).
+# Environment id of Sample Factory's gym Atari path (sf_examples/atari/atari_utils.py, AtariSpec). Training most likely
+# used the envpool equivalent, MsPacman-v5 (see the comment above MODELS).
 ENV_ID = "MsPacmanNoFrameskip-v4"
 # Number of discrete actions in the minimal Ms. Pac-Man action set (NOOP, UP, RIGHT, LEFT, DOWN, 4 diagonals).
 N_ACTIONS = 9

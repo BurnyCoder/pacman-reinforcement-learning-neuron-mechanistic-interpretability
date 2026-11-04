@@ -887,7 +887,8 @@ def specificity(seed: str, n_boot: int = 2000) -> None:
       local to the steered cell?), time near each target, region occupancy with game-bootstrap CIs, the open-loop KL
       rank of the candidate among the 64 channels at its cell (is it simply the strongest perturbation?), damage vs
       the null arms, navigation (action changes, net displacement), and approach without life-loss windows;
-    - fc candidates: the voted-direction rate in three contexts (trigger / frightened elsewhere / normal mode), the
+    - fc candidates: the rate of moving in the secondary metric's direction in three contexts (trigger / frightened
+      elsewhere / normal mode), the
       secondary metric of the 99 null arms (confirm had no null for it) and damage vs the null arms;
     - every candidate: intraclass correlation of the paired primary Δ within start-state clusters, the design effect
       and the cluster-adjusted normal one-sided p (Holm over the agent's candidates).

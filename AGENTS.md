@@ -3,8 +3,9 @@
 - Environment: `uv sync`; run everything with `uv run`. Windows needs the spawn-safe `if __name__ == "__main__"`
   guard for anything that calls `rollout.run_games` (it uses worker processes).
 - Never change `env.py` wrappers or `model.py` normalisation without re-running `tests/test_fidelity.py`. They
-  reproduce Sample Factory's observations bit-exactly and its logits to about 1e-5 on CPU, and gymnasium>=1.0's grayscale
-  wrapper would silently break this. The test is CPU-only. On CUDA, PyTorch's default cuDNN TF32 convolutions change
+  reproduce Sample Factory's gym-path observations bit-exactly and its logits to about 1e-5 on CPU, and
+  gymnasium>=1.0's grayscale wrapper would silently break this. Training most likely used Sample Factory's envpool
+  path, which the test does not cover (erratum 17 in `reports/00_summary.md`). The test is CPU-only. On CUDA, PyTorch's default cuDNN TF32 convolutions change
   logits by up to about 0.045 (`results/fidelity.json`); `aa-control` checks that this leaves the seed pairing intact.
 - Bulk data (activations, checkpoints, videos) goes to `DATA_DIR` from `.env`, never into git. Small result
   JSON goes to `results/`, and every number in a results table or inline marker must be generated from it
@@ -14,7 +15,8 @@
 - Held-out seeds (10000-10099) may only be read after the preregistration addendum is committed.
   `pacneuron.prereg.require_frozen_for` enforces this in `collect-heldout`, `h1`, `confirm` and `aa-control`; for
   agents 2222/3333 it also requires their committed `results/candidates_<agent>.json`.
-  `offtarget`, `occupancy`, `specificity` and `videos` read only the arms that `confirm` wrote. The lock checks that the frozen
+  `offtarget`, `occupancy`, `specificity` and `videos` read only held-out data that exists once `confirm` has run (its
+  arms and the held-out baseline), so they are gated indirectly. The lock checks that the frozen
   files have no uncommitted diff against HEAD. It records SHA-256 hashes of their working-tree bytes, so the hashes
   depend on line endings.
 - RAM uint8 arithmetic underflows: always go through `ram.py` helpers, which cast to int32.
