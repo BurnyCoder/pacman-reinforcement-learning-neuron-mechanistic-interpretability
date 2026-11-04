@@ -63,7 +63,7 @@ def models_table() -> str:
     from pacneuron.model import SFActorCritic
     n_params = sum(p.numel() for p in SFActorCritic().parameters())
     rows = ["| agent | architecture | params | algorithm and objective | training data | discovery games (sticky p=0.25) | "
-            "mean score ± SD | model-card score (no sticky) |", "|---|---|---|---|---|---|---|---|"]
+            "mean score ± SD | model-card score (episodes and settings not stated) |", "|---|---|---|---|---|---|---|---|"]
     for spec in MODELS.values():
         r = _load(f"collect_{spec.name}_discovery")
         if r:
@@ -71,8 +71,9 @@ def models_table() -> str:
             rows.append(f"| [{spec.name}](https://huggingface.co/{spec.repo_id}) | Nature-CNN (SF convnet_atari): conv 32/64/64 -> fc 512 "
                         f"(ReLU) -> linear policy (9) + value | {n_params:,} | APPO (Sample Factory 2.0), maximise "
                         f"clipped game reward, gamma 0.99, no imitation | 2B emulator frames (≈500M agent steps at "
-                        f"frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of interaction with "
-                        f"MsPacmanNoFrameskip-v4 | {r['games']} | {s.mean():.0f} ± {s.std(ddof=1):.0f} | "
+                        f"frameskip 4; cfg.json train_for_env_steps with summaries_use_frameskip) of Ms. Pac-Man play, "
+                        f"most likely via envpool MsPacman-v5 (erratum 17) | {r['games']} | {s.mean():.0f} ± "
+                        f"{s.std(ddof=1):.0f} | "
                         f"{spec.reported_mean_reward:.0f} ± {spec.reported_std_reward:.0f} |")
     return "\n".join(rows)
 
@@ -166,8 +167,10 @@ def specificity_tables(sp: dict) -> str:
                     f"{_pct(dm['return']['share_nulls_more_damaging'])} of {dm['n_null']} | {_eff(nv['action_change'])} | "
                     f"{_eff(nv['displacement'], 2)} | {_f(v['approach_excluding_loss']['delta'])} |")
     if fc:
-        rows += ["", "| fc candidate (post hoc) | P(voted direction) when the nearest edible ghost is in that direction | "
-                 "frightened, edible ghost elsewhere, direction open | normal mode, direction open | secondary Δ vs 99 null "
+        # d = the secondary metric's direction (shown in the row label); for derived candidates it is the edible
+        # direction with the highest R², which need not be a direction the unit votes for (fc 379 barely votes UP)
+        rows += ["", "| fc candidate (post hoc; d = secondary-metric direction) | P(move in d) when the nearest edible "
+                 "ghost is in d | frightened, edible ghost elsewhere, d open | normal mode, d open | secondary Δ vs 99 null "
                  "ablations (seeds 10000–10019): nulls at least as strong / null q95 (signed, as in the steering table) |",
                  "|---|---|---|---|---|"]
         for v in fc.values():
