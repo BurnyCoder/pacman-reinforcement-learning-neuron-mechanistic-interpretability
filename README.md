@@ -41,7 +41,7 @@ local "no-go zone"** (agent 1111, confirmatory, held-out games).
   activation.
 - **Preregistered effect.** The agent moves toward that cell's target node less often. Approach rate
   <!--n:appo_1111:c3_ch18_cell56:base-->0.424<!--/n--> → <!--n:appo_1111:c3_ch18_cell56:arm-->0.361<!--/n-->,
-  Holm p <!--n:appo_1111:c3_ch18_cell56:p-->0.0002<!--/n--> (the smallest value the permutation test can give). The
+  Holm p <!--n:appo_1111:c3_ch18_cell56:p-->0.0002<!--/n--> (the floor of the 10,000-permutation test, 1/10,001, after Holm over 2 tests). The
   effect is larger than that of every one of the <!--n:appo_1111:c3_ch18_cell56:null_n-->63<!--/n--> other channels
   set at the same position, each to its own 99th percentile. The preregistered steering hypothesis (H2) is therefore
   **supported**.
